@@ -96,6 +96,7 @@ function sendJson(response, status, body, headers = {}) {
 async function startMockSarvam(t) {
   const state = {
     mode: "ok",
+    detectedLanguage: "ta-IN",
     requests: [],
   };
 
@@ -145,7 +146,7 @@ async function startMockSarvam(t) {
       sendJson(response, 200, {
         request_id: "req-stt",
         transcript: "வாசல் எண் இரண்டு",
-        language_code: "ta-IN",
+        language_code: state.detectedLanguage,
       });
       return;
     }
@@ -190,13 +191,11 @@ async function startMockSarvam(t) {
 }
 
 function audioForm({
-  languageCode = "ta-IN",
   type = "audio/webm;codecs=opus",
   bytes = Buffer.from("recorded-audio"),
 } = {}) {
   const form = new FormData();
   form.append("audio", new File([bytes], "turn.webm", { type }));
-  form.append("languageCode", languageCode);
   return form;
 }
 
@@ -212,7 +211,7 @@ test("local translation route handlers", { timeout: 60_000 }, async (t) => {
     SARVAM_API_TIMEOUT_MS: "75",
   });
 
-  await t.test("transcribes short audio with an explicit language", async () => {
+  await t.test("transcribes audio and returns its detected language", async () => {
     const response = await fetch(`${baseUrl}/api/local-translation/transcribe`, {
       method: "POST",
       body: audioForm(),
@@ -228,10 +227,21 @@ test("local translation route handlers", { timeout: 60_000 }, async (t) => {
       apiKey: "test-sarvam-key",
       model: "saaras:v3",
       mode: "transcribe",
-      languageCode: "ta-IN",
+      languageCode: null,
       fileName: "turn.webm",
       fileType: "audio/webm",
     });
+  });
+
+  await t.test("rejects a detected language outside the supported set", async () => {
+    mock.state.detectedLanguage = "bn-IN";
+    const response = await fetch(`${baseUrl}/api/local-translation/transcribe`, {
+      method: "POST",
+      body: audioForm(),
+    });
+    assert.equal(response.status, 422);
+    assert.equal((await errorBody(response)).code, "UNSUPPORTED_LANGUAGE");
+    mock.state.detectedLanguage = "ta-IN";
   });
 
   await t.test("translates with the local spoken-conversation settings", async () => {

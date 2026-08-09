@@ -19,7 +19,6 @@ import {
 } from "react";
 
 type LanguageCode = "ta-IN" | "kn-IN" | "hi-IN" | "en-IN";
-type Direction = "rider" | "other";
 type InteractionMode = "hold" | "tap";
 type Phase =
   | "idle"
@@ -40,7 +39,6 @@ type TranslationResult = {
 
 type SavedRecording = {
   blob: Blob;
-  sourceLanguage: LanguageCode;
   targetLanguage: LanguageCode;
 };
 
@@ -50,10 +48,8 @@ type ApiErrorPayload = {
   };
 };
 
-const DEFAULT_RIDER_LANGUAGE: LanguageCode = "hi-IN";
-const DEFAULT_OTHER_LANGUAGE: LanguageCode = "kn-IN";
-const RIDER_LANGUAGE_STORAGE_KEY = "local-translation.rider-language";
-const OTHER_LANGUAGE_STORAGE_KEY = "local-translation.counterpart-language";
+const DEFAULT_OUTPUT_LANGUAGE: LanguageCode = "kn-IN";
+const OUTPUT_LANGUAGE_STORAGE_KEY = "local-translation.counterpart-language";
 const MAX_RECORDING_MS = 15_000;
 const SILENT_WAV_DATA_URL =
   "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQAAACAgICA";
@@ -85,14 +81,6 @@ const phaseLabels: Record<Phase, string> = {
 
 function isLanguageCode(value: string | null): value is LanguageCode {
   return languages.some((language) => language.code === value);
-}
-
-function differentLanguage(
-  excludedLanguage: LanguageCode,
-  preferredLanguage: LanguageCode,
-) {
-  if (preferredLanguage !== excludedLanguage) return preferredLanguage;
-  return languages.find((language) => language.code !== excludedLanguage)!.code;
 }
 
 function preferredRecordingMimeType() {
@@ -133,16 +121,11 @@ async function jsonResponse<T>(response: Response) {
 
 export function LocalTranslation() {
   const [open, setOpen] = useState(false);
-  const [riderLanguage, setRiderLanguage] =
-    useState<LanguageCode>(DEFAULT_RIDER_LANGUAGE);
-  const [otherLanguage, setOtherLanguage] =
-    useState<LanguageCode>(DEFAULT_OTHER_LANGUAGE);
+  const [outputLanguage, setOutputLanguage] =
+    useState<LanguageCode>(DEFAULT_OUTPUT_LANGUAGE);
   const [interactionMode, setInteractionMode] =
     useState<InteractionMode>("hold");
-  const [selectedDirection, setSelectedDirection] =
-    useState<Direction>("rider");
   const [phase, setPhase] = useState<Phase>("idle");
-  const [activeDirection, setActiveDirection] = useState<Direction | null>(null);
   const [result, setResult] = useState<TranslationResult | null>(null);
   const [errorMessage, setErrorMessage] = useState("");
   const [playbackNotice, setPlaybackNotice] = useState("");
@@ -158,9 +141,7 @@ export function LocalTranslation() {
   const discardRecordingRef = useRef(false);
   const captureSequenceRef = useRef(0);
   const activeTurnRef = useRef<{
-    direction: Direction;
-    riderLanguage: LanguageCode;
-    otherLanguage: LanguageCode;
+    targetLanguage: LanguageCode;
   } | null>(null);
   const requestControllerRef = useRef<AbortController | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -218,23 +199,14 @@ export function LocalTranslation() {
   }, []);
 
   function openSheet() {
-    const savedRiderLanguage = window.localStorage.getItem(
-      RIDER_LANGUAGE_STORAGE_KEY,
+    const savedOutputLanguage = window.localStorage.getItem(
+      OUTPUT_LANGUAGE_STORAGE_KEY,
     );
-    const savedOtherLanguage = window.localStorage.getItem(
-      OTHER_LANGUAGE_STORAGE_KEY,
+    setOutputLanguage(
+      isLanguageCode(savedOutputLanguage)
+        ? savedOutputLanguage
+        : DEFAULT_OUTPUT_LANGUAGE,
     );
-    const nextRiderLanguage = isLanguageCode(savedRiderLanguage)
-      ? savedRiderLanguage
-      : DEFAULT_RIDER_LANGUAGE;
-    const nextOtherLanguage =
-      isLanguageCode(savedOtherLanguage) &&
-      savedOtherLanguage !== nextRiderLanguage
-        ? savedOtherLanguage
-        : differentLanguage(nextRiderLanguage, DEFAULT_OTHER_LANGUAGE);
-    setRiderLanguage(nextRiderLanguage);
-    setOtherLanguage(nextOtherLanguage);
-    setSelectedDirection("rider");
     setOpen(true);
   }
 
@@ -317,7 +289,6 @@ export function LocalTranslation() {
     stopStream();
     stopPlayback({ revoke: true });
     setPhase("idle");
-    setActiveDirection(null);
     setResult(null);
     setErrorMessage("");
     setPlaybackNotice("");
@@ -326,32 +297,10 @@ export function LocalTranslation() {
     setOpen(false);
   }
 
-  function selectRiderLanguage(code: LanguageCode) {
+  function selectOutputLanguage(code: LanguageCode) {
     interruptPlayback();
-    setRiderLanguage(code);
-    window.localStorage.setItem(RIDER_LANGUAGE_STORAGE_KEY, code);
-    if (code === otherLanguage) {
-      const replacement = riderLanguage;
-      setOtherLanguage(replacement);
-      window.localStorage.setItem(OTHER_LANGUAGE_STORAGE_KEY, replacement);
-    }
-  }
-
-  function selectOtherLanguage(code: LanguageCode) {
-    interruptPlayback();
-    setOtherLanguage(code);
-    window.localStorage.setItem(OTHER_LANGUAGE_STORAGE_KEY, code);
-    if (code === riderLanguage) {
-      const replacement = otherLanguage;
-      setRiderLanguage(replacement);
-      window.localStorage.setItem(RIDER_LANGUAGE_STORAGE_KEY, replacement);
-    }
-  }
-
-  function selectDirection(direction: Direction) {
-    if (direction === selectedDirection) return;
-    interruptPlayback();
-    setSelectedDirection(direction);
+    setOutputLanguage(code);
+    window.localStorage.setItem(OUTPUT_LANGUAGE_STORAGE_KEY, code);
   }
 
   async function processRecording(recording: SavedRecording) {
@@ -374,7 +323,6 @@ export function LocalTranslation() {
         recording.blob,
         `local-turn.${fileExtension(mimeType)}`,
       );
-      formData.append("languageCode", recording.sourceLanguage);
 
       const transcription = await jsonResponse<{
         transcript: string;
@@ -388,23 +336,26 @@ export function LocalTranslation() {
       );
 
       setPhase("translating");
-      const translation = await jsonResponse<{ translatedText: string }>(
-        await fetch("/api/local-translation/translate", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            text: transcription.transcript,
-            sourceLanguage: recording.sourceLanguage,
-            targetLanguage: recording.targetLanguage,
-          }),
-          signal: controller.signal,
-        }),
-      );
+      const translation =
+        transcription.languageCode === recording.targetLanguage
+          ? { translatedText: transcription.transcript }
+          : await jsonResponse<{ translatedText: string }>(
+              await fetch("/api/local-translation/translate", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({
+                  text: transcription.transcript,
+                  sourceLanguage: transcription.languageCode,
+                  targetLanguage: recording.targetLanguage,
+                }),
+                signal: controller.signal,
+              }),
+            );
 
       const nextResult: TranslationResult = {
         sourceText: transcription.transcript,
         translatedText: translation.translatedText,
-        sourceLanguage: recording.sourceLanguage,
+        sourceLanguage: transcription.languageCode,
         targetLanguage: recording.targetLanguage,
       };
       setResult(nextResult);
@@ -452,11 +403,10 @@ export function LocalTranslation() {
       if (requestControllerRef.current === controller) {
         requestControllerRef.current = null;
       }
-      setActiveDirection(null);
     }
   }
 
-  async function startRecording(direction: Direction) {
+  async function startRecording() {
     if (busy || !open) return;
     if (!navigator.onLine) {
       setErrorMessage("You’re offline. Reconnect before translating.");
@@ -476,7 +426,6 @@ export function LocalTranslation() {
     setResult(null);
     setCanRetry(false);
     lastRecordingRef.current = null;
-    setActiveDirection(direction);
     setPhase("requesting-permission");
     requestControllerRef.current?.abort();
     stopPlayback({ revoke: true });
@@ -497,7 +446,6 @@ export function LocalTranslation() {
       ) {
         stream.getTracks().forEach((track) => track.stop());
         setPhase("idle");
-        setActiveDirection(null);
         return;
       }
 
@@ -506,7 +454,7 @@ export function LocalTranslation() {
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       recorderRef.current = recorder;
       chunksRef.current = [];
-      activeTurnRef.current = { direction, riderLanguage, otherLanguage };
+      activeTurnRef.current = { targetLanguage: outputLanguage };
 
       recorder.addEventListener(
         "start",
@@ -537,15 +485,10 @@ export function LocalTranslation() {
           if (duration < 350 || blob.size < 250) {
             setErrorMessage("Hold a little longer so the message can be heard.");
             setPhase("error");
-            setActiveDirection(null);
             return;
           }
 
-          const sourceLanguage =
-            turn.direction === "rider" ? turn.riderLanguage : turn.otherLanguage;
-          const targetLanguage =
-            turn.direction === "rider" ? turn.otherLanguage : turn.riderLanguage;
-          void processRecording({ blob, sourceLanguage, targetLanguage });
+          void processRecording({ blob, targetLanguage: turn.targetLanguage });
         },
         { once: true },
       );
@@ -559,7 +502,6 @@ export function LocalTranslation() {
       }, MAX_RECORDING_MS);
     } catch (error) {
       stopStream();
-      setActiveDirection(null);
       setErrorMessage(
         error instanceof DOMException &&
           (error.name === "NotAllowedError" || error.name === "SecurityError")
@@ -570,13 +512,13 @@ export function LocalTranslation() {
     }
   }
 
-  function onPointerDown(event: PointerEvent<HTMLButtonElement>, direction: Direction) {
+  function onPointerDown(event: PointerEvent<HTMLButtonElement>) {
     if (interactionMode !== "hold" || event.button !== 0) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
     hapticFeedback(12);
     pressActiveRef.current = true;
-    void startRecording(direction);
+    void startRecording();
   }
 
   function onPointerUp(event: PointerEvent<HTMLButtonElement>) {
@@ -589,7 +531,7 @@ export function LocalTranslation() {
     stopRecording();
   }
 
-  function onKeyboardDown(event: KeyboardEvent<HTMLButtonElement>, direction: Direction) {
+  function onKeyboardDown(event: KeyboardEvent<HTMLButtonElement>) {
     if (
       interactionMode !== "hold" ||
       event.repeat ||
@@ -599,7 +541,7 @@ export function LocalTranslation() {
     }
     event.preventDefault();
     pressActiveRef.current = true;
-    void startRecording(direction);
+    void startRecording();
   }
 
   function onKeyboardUp(event: KeyboardEvent<HTMLButtonElement>) {
@@ -613,9 +555,9 @@ export function LocalTranslation() {
     stopRecording();
   }
 
-  function onTap(direction: Direction) {
+  function onTap() {
     if (interactionMode !== "tap") return;
-    if (phase === "recording" && activeDirection === direction) {
+    if (phase === "recording") {
       hapticFeedback([8, 24, 8]);
       stopRecording();
       return;
@@ -623,7 +565,7 @@ export function LocalTranslation() {
     if (!busy) {
       hapticFeedback(12);
       pressActiveRef.current = true;
-      void startRecording(direction);
+      void startRecording();
     }
   }
 
@@ -648,14 +590,10 @@ export function LocalTranslation() {
   }
 
   function recordingButton() {
-    const direction = selectedDirection;
-    const rider = direction === "rider";
-    const active = phase === "recording" && activeDirection === direction;
+    const active = phase === "recording";
     const disabled =
       busy && phase !== "requesting-permission" && phase !== "recording";
-    const title = rider
-      ? `You are speaking ${languageNames[riderLanguage]}`
-      : `Other person is speaking ${languageNames[otherLanguage]}`;
+    const title = `Input language is detected automatically. Output is ${languageNames[outputLanguage]}`;
     const helper =
       interactionMode === "hold"
         ? active
@@ -668,22 +606,22 @@ export function LocalTranslation() {
     return (
       <button
         type="button"
-        className={`translation-talk-button ${rider ? "rider" : "other"} ${active ? "recording" : ""}`}
+        className={`translation-talk-button ${active ? "recording" : ""}`}
         disabled={disabled}
         aria-label={`${helper}. ${title}.`}
         aria-pressed={active}
-        onPointerDown={(event) => onPointerDown(event, direction)}
+        onPointerDown={onPointerDown}
         onPointerUp={onPointerUp}
         onPointerCancel={onPointerUp}
-        onKeyDown={(event) => onKeyboardDown(event, direction)}
+        onKeyDown={onKeyboardDown}
         onKeyUp={onKeyboardUp}
-        onClick={() => onTap(direction)}
+        onClick={onTap}
       >
         <span className="translation-talk-icon">
           {active ? <AudioLines size={38} /> : <Mic size={38} />}
         </span>
         <strong>{active ? "Listening" : interactionMode === "hold" ? "Hold to speak" : "Tap to speak"}</strong>
-        <small>{active ? helper : rider ? "Speak as you" : "Pass the phone"}</small>
+        <small>{active ? helper : "Language detected automatically"}</small>
       </button>
     );
   }
@@ -720,8 +658,8 @@ export function LocalTranslation() {
             <header className="translation-sheet-header">
               <div>
                 <span className="translation-eyebrow">Quick translation</span>
-                <h2 id="translation-title">Who’s speaking?</h2>
-                <p>Choose a person, then hold the mic.</p>
+                <h2 id="translation-title">Speak to translate</h2>
+                <p>We’ll detect the spoken language automatically.</p>
               </div>
               <button
                 ref={closeButtonRef}
@@ -736,14 +674,14 @@ export function LocalTranslation() {
 
             <div className="translation-language-settings">
               <label className="translation-language-row">
-                <span>You speak</span>
+                <span>Select output language</span>
                 <select
-                  value={riderLanguage}
+                  value={outputLanguage}
                   disabled={controlsLocked}
-                  aria-label="Your language"
+                  aria-label="Select output language"
                   onChange={(event) => {
                     if (isLanguageCode(event.target.value)) {
-                      selectRiderLanguage(event.target.value);
+                      selectOutputLanguage(event.target.value);
                     }
                   }}
                 >
@@ -754,66 +692,13 @@ export function LocalTranslation() {
                   ))}
                 </select>
               </label>
-              <label className="translation-language-row">
-                <span>Other person speaks</span>
-                <select
-                  value={otherLanguage}
-                  disabled={controlsLocked}
-                  aria-label="Other person’s language"
-                  onChange={(event) => {
-                    if (isLanguageCode(event.target.value)) {
-                      selectOtherLanguage(event.target.value);
-                    }
-                  }}
-                >
-                  {languages.map((language) => (
-                    <option key={language.code} value={language.code}>
-                      {language.native} · {language.label}
-                    </option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div className="translation-speaker-picker">
-              <span>Speaking now</span>
-              <div role="group" aria-label="Choose who is speaking">
-                <button
-                  type="button"
-                  className={selectedDirection === "rider" ? "selected" : ""}
-                  aria-pressed={selectedDirection === "rider"}
-                  disabled={controlsLocked}
-                  onClick={() => selectDirection("rider")}
-                >
-                  <span>Y</span>
-                  <strong>You</strong>
-                </button>
-                <button
-                  type="button"
-                  className={selectedDirection === "other" ? "selected" : ""}
-                  aria-pressed={selectedDirection === "other"}
-                  disabled={controlsLocked}
-                  onClick={() => selectDirection("other")}
-                >
-                  <span>O</span>
-                  <strong>Other person</strong>
-                </button>
-              </div>
             </div>
 
             <div className="translation-talk-stage">
               <div className="translation-direction" aria-hidden="true">
-                <span>
-                  {selectedDirection === "rider"
-                    ? languageNames[riderLanguage]
-                    : languageNames[otherLanguage]}
-                </span>
+                <span>Auto-detect</span>
                 <i>→</i>
-                <span>
-                  {selectedDirection === "rider"
-                    ? languageNames[otherLanguage]
-                    : languageNames[riderLanguage]}
-                </span>
+                <span>{languageNames[outputLanguage]}</span>
               </div>
               {recordingButton()}
             </div>

@@ -37,7 +37,6 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const audio = formData.get("audio");
-    const languageCode = formData.get("languageCode");
 
     if (!(audio instanceof File) || audio.size === 0) {
       return jsonError(
@@ -67,15 +66,6 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!isLocalLanguageCode(languageCode)) {
-      return jsonError(
-        400,
-        "UNSUPPORTED_LANGUAGE",
-        "Choose Tamil, Kannada, Hindi, or English.",
-        false,
-      );
-    }
-
     const upstreamForm = new FormData();
     const upstreamAudio = new File([audio], audio.name || "recording.webm", {
       type: audioMimeType,
@@ -84,7 +74,6 @@ export async function POST(request: Request) {
     upstreamForm.append("file", upstreamAudio, upstreamAudio.name);
     upstreamForm.append("model", "saaras:v3");
     upstreamForm.append("mode", "transcribe");
-    upstreamForm.append("language_code", languageCode);
 
     const upstream = await sarvamFetch("speech-to-text", {
       method: "POST",
@@ -94,6 +83,7 @@ export async function POST(request: Request) {
 
     const body = await parseSarvamJson(upstream);
     const transcript = typeof body.transcript === "string" ? body.transcript.trim() : "";
+    const languageCode = body.language_code;
 
     if (!transcript) {
       if ("transcript" in body) {
@@ -102,6 +92,18 @@ export async function POST(request: Request) {
           "NO_SPEECH_DETECTED",
           "No clear speech was detected. Hold the button and try again.",
           true,
+        );
+      }
+      return invalidSarvamResponse();
+    }
+
+    if (!isLocalLanguageCode(languageCode)) {
+      if (typeof languageCode === "string") {
+        return jsonError(
+          422,
+          "UNSUPPORTED_LANGUAGE",
+          "The detected language is not supported yet. Try Tamil, Kannada, Hindi, or English.",
+          false,
         );
       }
       return invalidSarvamResponse();

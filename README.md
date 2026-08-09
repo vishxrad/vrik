@@ -18,7 +18,7 @@ the browser.
 
 ## Local translation APIs
 
-- `POST /api/local-translation/transcribe` accepts recorded audio and its known language.
+- `POST /api/local-translation/transcribe` accepts recorded audio and returns its detected language.
 - `POST /api/local-translation/translate` translates Tamil, Hindi, Kannada, or English text.
 - `POST /api/local-translation/synthesize` returns the translated message as WAV audio.
 
