@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
+  AudioLines,
   ArrowRight,
   CircleAlert,
   Headphones,
@@ -15,6 +16,10 @@ import {
 } from "lucide-react";
 
 import styles from "@/components/callback/callback-ui.module.css";
+import {
+  usePressToTalk,
+  type PressToTalkMode,
+} from "@/components/callback/use-press-to-talk";
 import { useTranslatedVoipCall } from "@/components/callback/use-translated-voip-call";
 import {
   openCallbackDemoChannel,
@@ -33,7 +38,10 @@ export function SupportCallbackConsole() {
   const [notice, setNotice] = useState("Ready to call Ram in the partner app");
   const [callback, setCallback] = useState<CallbackApiRecord | null>(null);
   const [databaseReady, setDatabaseReady] = useState<boolean | null>(null);
+  const [interactionMode, setInteractionMode] =
+    useState<PressToTalkMode>("hold");
   const recordingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const fallbackRecordingRef = useRef(false);
   const voip = useTranslatedVoipCall("support");
 
   const syncCallback = useCallback(async () => {
@@ -132,20 +140,35 @@ export function SupportCallbackConsole() {
     }
   }
 
-  function startDemoTurn() {
+  function finishFallbackTurn() {
+    if (!fallbackRecordingRef.current) return;
+    fallbackRecordingRef.current = false;
+    if (recordingTimer.current) clearTimeout(recordingTimer.current);
+    recordingTimer.current = null;
+    setState("connected");
+    setNotice("Hindi audio delivered to Ram");
+    publishCallbackDemoEvent({ type: "turn-end", speaker: "support", at: Date.now() });
+  }
+
+  function startSupportTurn() {
     if (state !== "connected") return;
     if (voip.connected) {
-      voip.toggleRecording();
+      void voip.startRecording();
       return;
     }
+    fallbackRecordingRef.current = true;
     setState("recording");
     setNotice("Listening in English…");
     publishCallbackDemoEvent({ type: "turn-start", speaker: "support", at: Date.now() });
-    recordingTimer.current = setTimeout(() => {
-      setState("connected");
-      setNotice("Hindi audio delivered to Ram");
-      publishCallbackDemoEvent({ type: "turn-end", speaker: "support", at: Date.now() });
-    }, 1600);
+    recordingTimer.current = setTimeout(finishFallbackTurn, 15_000);
+  }
+
+  function stopSupportTurn() {
+    if (voip.connected) {
+      voip.stopRecording();
+      return;
+    }
+    finishFallbackTurn();
   }
 
   async function endCall() {
@@ -173,6 +196,15 @@ export function SupportCallbackConsole() {
     "receiving",
   ].includes(voip.phase);
   const shownTurn = voip.lastTurn;
+  const supportRecording = voip.phase === "recording" || state === "recording";
+  const talkDisabled = voipBusy || (voip.connected && !voip.peerConnected);
+  const pressToTalk = usePressToTalk({
+    mode: interactionMode,
+    disabled: talkDisabled,
+    recording: supportRecording,
+    start: startSupportTurn,
+    stop: stopSupportTurn,
+  });
 
   return (
     <main className={styles.operatorPage}>
@@ -258,12 +290,31 @@ export function SupportCallbackConsole() {
                 <div className={styles.talkArea}>
                   <button
                     className={`${styles.talkButton} ${voip.phase === "recording" || state === "recording" ? styles.recording : ""}`}
-                    onClick={startDemoTurn}
-                    disabled={voipBusy || (voip.connected && !voip.peerConnected)}
+                    {...pressToTalk}
+                    disabled={talkDisabled}
+                    aria-pressed={supportRecording}
                   >
-                    <span><Mic size={31} /></span>
-                    <strong>{voip.phase === "recording" || state === "recording" ? "Tap to send" : voipBusy ? "Working…" : "Tap to speak"}</strong>
-                    <small>{voip.phase === "recording" ? "Listening in English" : "Speak English"}</small>
+                    <span>{supportRecording ? <AudioLines size={31} /> : <Mic size={31} />}</span>
+                    <strong>{supportRecording ? (interactionMode === "hold" ? "Release to send" : "Tap to send") : voipBusy ? "Working…" : interactionMode === "hold" ? "Hold to speak" : "Tap to speak"}</strong>
+                    <small>{voip.phase === "requesting-permission" ? "Opening microphone…" : supportRecording ? "Listening in English" : "Speak English"}</small>
+                  </button>
+                </div>
+                <div className={styles.modeToggle}>
+                  <span>{interactionMode === "hold" ? "Press-and-hold mode" : "Tap mode"}</span>
+                  <button
+                    type="button"
+                    disabled={
+                      voipBusy ||
+                      supportRecording ||
+                      voip.phase === "requesting-permission"
+                    }
+                    onClick={() =>
+                      setInteractionMode((current) =>
+                        current === "hold" ? "tap" : "hold",
+                      )
+                    }
+                  >
+                    {interactionMode === "hold" ? "Use tap instead" : "Use press and hold"}
                   </button>
                 </div>
                 <div className={styles.translationPreview} aria-label="Example translated turn">

@@ -8,6 +8,7 @@ type VoipPhase =
   | "idle"
   | "connecting"
   | "ready"
+  | "requesting-permission"
   | "recording"
   | "transcribing"
   | "translating"
@@ -82,7 +83,10 @@ export function useTranslatedVoipCall(role: VoipRole) {
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const recordingStartedAtRef = useRef(0);
   const recordingTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const pressActiveRef = useRef(false);
+  const captureSequenceRef = useRef(0);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const audioUrlRef = useRef("");
   const operationRef = useRef(0);
@@ -105,6 +109,7 @@ export function useTranslatedVoipCall(role: VoipRole) {
   }, []);
 
   const stopCapture = useCallback(() => {
+    pressActiveRef.current = false;
     if (recordingTimerRef.current) clearTimeout(recordingTimerRef.current);
     recordingTimerRef.current = null;
     const recorder = recorderRef.current;
@@ -131,6 +136,7 @@ export function useTranslatedVoipCall(role: VoipRole) {
 
   const disconnect = useCallback(async () => {
     operationRef.current += 1;
+    captureSequenceRef.current += 1;
     stopCapture();
     stopPlayback();
     const room = roomRef.current;
@@ -145,6 +151,8 @@ export function useTranslatedVoipCall(role: VoipRole) {
   useEffect(() => {
     return () => {
       operationRef.current += 1;
+      captureSequenceRef.current += 1;
+      pressActiveRef.current = false;
       if (recordingTimerRef.current) clearTimeout(recordingTimerRef.current);
       const recorder = recorderRef.current;
       if (recorder && recorder.state !== "inactive") recorder.stop();
@@ -369,10 +377,26 @@ export function useTranslatedVoipCall(role: VoipRole) {
 
     stopPlayback();
     setErrorMessage("");
+    pressActiveRef.current = true;
+    const captureSequence = ++captureSequenceRef.current;
+    setPhase("requesting-permission");
+    primePlayback();
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
         audio: { channelCount: 1, echoCancellation: true, noiseSuppression: true },
       });
+      if (
+        captureSequence !== captureSequenceRef.current ||
+        !pressActiveRef.current ||
+        roomRef.current !== room ||
+        room.state !== "connected"
+      ) {
+        stream.getTracks().forEach((track) => track.stop());
+        setPhase((current) =>
+          current === "requesting-permission" ? "ready" : current,
+        );
+        return;
+      }
       streamRef.current = stream;
       const mimeType = preferredRecordingMimeType();
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
@@ -381,6 +405,13 @@ export function useTranslatedVoipCall(role: VoipRole) {
       recorder.addEventListener("dataavailable", (event) => {
         if (event.data.size) chunksRef.current.push(event.data);
       });
+      recorder.addEventListener(
+        "start",
+        () => {
+          recordingStartedAtRef.current = Date.now();
+        },
+        { once: true },
+      );
       recorder.addEventListener("stop", () => {
         stream.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
@@ -388,10 +419,11 @@ export function useTranslatedVoipCall(role: VoipRole) {
         const blob = new Blob(chunksRef.current, {
           type: recorder.mimeType || mimeType || "audio/webm",
         });
+        const duration = Date.now() - recordingStartedAtRef.current;
         chunksRef.current = [];
-        if (blob.size > 250) void processRecording(blob);
+        if (duration >= 350 && blob.size > 250) void processRecording(blob);
         else {
-          setErrorMessage("Speak a little longer so the message can be heard.");
+          setErrorMessage("Hold a little longer so the message can be heard.");
           setPhase("error");
         }
       }, { once: true });
@@ -402,8 +434,14 @@ export function useTranslatedVoipCall(role: VoipRole) {
       });
       recorder.start(250);
       setPhase("recording");
-      recordingTimerRef.current = setTimeout(() => stopCapture(), MAX_RECORDING_MS);
+      recordingTimerRef.current = setTimeout(() => {
+        if (typeof navigator.vibrate === "function") {
+          navigator.vibrate([16, 40, 16]);
+        }
+        stopCapture();
+      }, MAX_RECORDING_MS);
     } catch (error) {
+      pressActiveRef.current = false;
       streamRef.current?.getTracks().forEach((track) => track.stop());
       streamRef.current = null;
       setErrorMessage(
@@ -413,17 +451,12 @@ export function useTranslatedVoipCall(role: VoipRole) {
       );
       setPhase("error");
     }
-  }, [peerConnected, peerIdentity, processRecording, stopCapture, stopPlayback]);
+  }, [peerConnected, peerIdentity, primePlayback, processRecording, stopCapture, stopPlayback]);
 
   const stopRecording = useCallback(() => {
-    if (phase !== "recording") return;
+    pressActiveRef.current = false;
     stopCapture();
-  }, [phase, stopCapture]);
-
-  const toggleRecording = useCallback(() => {
-    if (phase === "recording") stopRecording();
-    else if (phase === "ready" || phase === "error") void startRecording();
-  }, [phase, startRecording, stopRecording]);
+  }, [stopCapture]);
 
   return {
     phase,
@@ -433,6 +466,7 @@ export function useTranslatedVoipCall(role: VoipRole) {
     lastTurn,
     connect,
     disconnect,
-    toggleRecording,
+    startRecording,
+    stopRecording,
   };
 }

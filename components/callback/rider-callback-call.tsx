@@ -1,9 +1,13 @@
 "use client";
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { Headphones, Languages, Mic, Phone, PhoneOff, Volume2 } from "lucide-react";
+import { AudioLines, Headphones, Languages, Mic, Phone, PhoneOff, Volume2 } from "lucide-react";
 
 import styles from "@/components/callback/callback-ui.module.css";
+import {
+  usePressToTalk,
+  type PressToTalkMode,
+} from "@/components/callback/use-press-to-talk";
 import { useTranslatedVoipCall } from "@/components/callback/use-translated-voip-call";
 import {
   openCallbackDemoChannel,
@@ -19,7 +23,11 @@ type RiderCallState = "hidden" | "incoming" | "connected" | "support-speaking" |
 
 export function RiderCallbackCall({ onIncoming }: { onIncoming?: () => void }) {
   const [state, setState] = useState<RiderCallState>("hidden");
+  const [interactionMode, setInteractionMode] =
+    useState<PressToTalkMode>("hold");
   const callbackIdRef = useRef("");
+  const fallbackRecordingRef = useRef(false);
+  const fallbackTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const voip = useTranslatedVoipCall("rider");
 
   const pollForCallback = useCallback(async () => {
@@ -72,6 +80,10 @@ export function RiderCallbackCall({ onIncoming }: { onIncoming?: () => void }) {
       window.clearInterval(interval);
     };
   }, [pollForCallback]);
+
+  useEffect(() => () => {
+    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+  }, []);
 
   async function answer() {
     if (callbackIdRef.current) {
@@ -126,26 +138,48 @@ export function RiderCallbackCall({ onIncoming }: { onIncoming?: () => void }) {
     callbackIdRef.current = "";
   }
 
-  function toggleRiderTurn() {
+  function finishFallbackTurn() {
+    if (!fallbackRecordingRef.current) return;
+    fallbackRecordingRef.current = false;
+    if (fallbackTimerRef.current) clearTimeout(fallbackTimerRef.current);
+    fallbackTimerRef.current = null;
+    setState("connected");
+    publishCallbackDemoEvent({ type: "turn-end", speaker: "rider", at: Date.now() });
+  }
+
+  function startRiderTurn() {
     if (voip.connected) {
-      voip.toggleRecording();
-      return;
-    }
-    if (state === "recording") {
-      setState("connected");
-      publishCallbackDemoEvent({ type: "turn-end", speaker: "rider", at: Date.now() });
+      void voip.startRecording();
       return;
     }
     if (state !== "connected") return;
+    fallbackRecordingRef.current = true;
     setState("recording");
     publishCallbackDemoEvent({ type: "turn-start", speaker: "rider", at: Date.now() });
+    fallbackTimerRef.current = setTimeout(finishFallbackTurn, 15_000);
   }
 
-  if (state === "hidden") return null;
+  function stopRiderTurn() {
+    if (voip.connected) {
+      voip.stopRecording();
+      return;
+    }
+    finishFallbackTurn();
+  }
 
   const supportSpeaking = voip.phase === "receiving" || state === "support-speaking";
   const riderRecording = voip.phase === "recording" || state === "recording";
   const voipBusy = ["transcribing", "translating", "synthesizing", "sending"].includes(voip.phase);
+  const talkDisabled = supportSpeaking || voipBusy || (voip.connected && !voip.peerConnected);
+  const pressToTalk = usePressToTalk({
+    mode: interactionMode,
+    disabled: talkDisabled,
+    recording: riderRecording,
+    start: startRiderTurn,
+    stop: stopRiderTurn,
+  });
+
+  if (state === "hidden") return null;
 
   return (
     <div className={styles.riderOverlay} role="presentation">
@@ -166,15 +200,34 @@ export function RiderCallbackCall({ onIncoming }: { onIncoming?: () => void }) {
         ) : (
           <>
             <button
-              className={styles.riderTalk}
-              onClick={toggleRiderTurn}
-              disabled={supportSpeaking || voipBusy || (voip.connected && !voip.peerConnected)}
+              className={`${styles.riderTalk} ${riderRecording ? styles.recording : ""}`}
+              {...pressToTalk}
+              disabled={talkDisabled}
               aria-pressed={riderRecording}
             >
-              {supportSpeaking ? <Volume2 size={34} /> : <Mic size={34} />}
-              <strong>{supportSpeaking ? "Support is speaking" : riderRecording ? "Tap to send" : voipBusy ? "Translating…" : voip.connected && !voip.peerConnected ? "Waiting for support" : "Tap to speak"}</strong>
-              <small>{supportSpeaking ? "Playing in Hindi" : riderRecording ? "Listening in Hindi" : "Speak Hindi"}</small>
+              {supportSpeaking ? <Volume2 size={34} /> : riderRecording ? <AudioLines size={34} /> : <Mic size={34} />}
+              <strong>{supportSpeaking ? "Support is speaking" : riderRecording ? interactionMode === "hold" ? "Release to send" : "Tap to send" : voipBusy ? "Translating…" : voip.connected && !voip.peerConnected ? "Waiting for support" : interactionMode === "hold" ? "Hold to speak" : "Tap to speak"}</strong>
+              <small>{supportSpeaking ? "Playing in Hindi" : voip.phase === "requesting-permission" ? "Opening microphone…" : riderRecording ? "Listening in Hindi" : "Speak Hindi"}</small>
             </button>
+            <div className={styles.modeToggle}>
+              <span>{interactionMode === "hold" ? "Press-and-hold mode" : "Tap mode"}</span>
+              <button
+                type="button"
+                disabled={
+                  voipBusy ||
+                  riderRecording ||
+                  supportSpeaking ||
+                  voip.phase === "requesting-permission"
+                }
+                onClick={() =>
+                  setInteractionMode((current) =>
+                    current === "hold" ? "tap" : "hold",
+                  )
+                }
+              >
+                {interactionMode === "hold" ? "Use tap instead" : "Use press and hold"}
+              </button>
+            </div>
             {voip.errorMessage && <div className={styles.hint} role="alert">{voip.errorMessage}</div>}
             <button className={styles.riderEnd} onClick={endCall}><PhoneOff size={15} /> End call</button>
             <div className={styles.hint}><Headphones size={14} /> One person speaks at a time</div>
