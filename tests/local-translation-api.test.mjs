@@ -230,7 +230,7 @@ test("local translation route handlers", { timeout: 60_000 }, async (t) => {
       mode: "transcribe",
       languageCode: "ta-IN",
       fileName: "turn.webm",
-      fileType: "audio/webm;codecs=opus",
+      fileType: "audio/webm",
     });
   });
 

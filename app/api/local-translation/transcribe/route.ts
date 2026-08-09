@@ -27,7 +27,7 @@ const ALLOWED_AUDIO_TYPES = new Set([
 ]);
 
 function normalizedMimeType(file: File) {
-  return file.type.toLowerCase().split(";", 1)[0];
+  return file.type.toLowerCase().split(";", 1)[0].trim();
 }
 
 export async function POST(request: Request) {
@@ -57,7 +57,8 @@ export async function POST(request: Request) {
       );
     }
 
-    if (!ALLOWED_AUDIO_TYPES.has(normalizedMimeType(audio))) {
+    const audioMimeType = normalizedMimeType(audio);
+    if (!ALLOWED_AUDIO_TYPES.has(audioMimeType)) {
       return jsonError(
         415,
         "INVALID_AUDIO",
@@ -76,7 +77,11 @@ export async function POST(request: Request) {
     }
 
     const upstreamForm = new FormData();
-    upstreamForm.append("file", audio, audio.name || "recording.webm");
+    const upstreamAudio = new File([audio], audio.name || "recording.webm", {
+      type: audioMimeType,
+      lastModified: audio.lastModified,
+    });
+    upstreamForm.append("file", upstreamAudio, upstreamAudio.name);
     upstreamForm.append("model", "saaras:v3");
     upstreamForm.append("mode", "transcribe");
     upstreamForm.append("language_code", languageCode);
