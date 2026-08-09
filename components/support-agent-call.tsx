@@ -135,6 +135,7 @@ export function SupportAgentCall({ open, onClose }: SupportAgentCallProps) {
     setErrorMessage("");
     setMuted(false);
     setTranscript([]);
+    const callbackRequestId = crypto.randomUUID();
 
     try {
       const {
@@ -166,6 +167,7 @@ export function SupportAgentCall({ open, onClose }: SupportAgentCallProps) {
             user_name: VOICE_AGENT_CONFIG.rider.name,
             rider_id: VOICE_AGENT_CONFIG.rider.id,
             order_id: VOICE_AGENT_CONFIG.rider.orderId,
+            callback_request_id: callbackRequestId,
           },
         },
         audioInterface,

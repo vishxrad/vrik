@@ -26,6 +26,22 @@ function isUuid(value: string) {
   return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
+const SARVAM_ISSUE_TYPE_MAP: Record<string, CallbackIssueType> = {
+  order_issue: "restaurant",
+  payout_issue: "payment",
+  app_issue: "navigation",
+  customer_unreachable: "customer_unreachable",
+  safety_or_account: "safety",
+  other: "other",
+};
+
+function normalizedIssueType(value: string) {
+  if (CALLBACK_ISSUE_TYPES.includes(value as CallbackIssueType)) {
+    return value as CallbackIssueType;
+  }
+  return SARVAM_ISSUE_TYPE_MAP[value] ?? null;
+}
+
 export async function POST(request: Request) {
   if (!process.env.CALLBACK_WEBHOOK_SECRET) {
     return callbackJsonError(
@@ -56,7 +72,10 @@ export async function POST(request: Request) {
       return callbackJsonError(400, "INVALID_REQUEST", "Send a valid JSON payload.");
     }
 
-    const needsHuman = body.needsHuman === true || body.needsHuman === "yes";
+    const needsHuman =
+      body.needsHuman === true ||
+      body.needsHuman === "yes" ||
+      body.needsHuman === "escalated";
     if (!needsHuman) {
       return Response.json(
         { accepted: false, reason: "human_callback_not_requested" },
@@ -67,7 +86,7 @@ export async function POST(request: Request) {
     const callbackRequestId = stringValue(body.callbackRequestId, 128);
     const riderId = stringValue(body.riderId, 64);
     const orderId = stringValue(body.orderId, 64);
-    const issueType = stringValue(body.issueType, 64) as CallbackIssueType;
+    const issueType = normalizedIssueType(stringValue(body.issueType, 64));
     const priority = stringValue(body.priority, 16) as CallbackPriority;
 
     if (!isUuid(callbackRequestId)) {
@@ -76,7 +95,7 @@ export async function POST(request: Request) {
     if (riderId !== CALLBACK_CONFIG.rider.id || orderId !== CALLBACK_CONFIG.rider.orderId) {
       return callbackJsonError(403, "RIDER_NOT_ALLOWED", "This demo only accepts Ram’s active order.");
     }
-    if (!CALLBACK_ISSUE_TYPES.includes(issueType)) {
+    if (!issueType) {
       return callbackJsonError(400, "INVALID_REQUEST", "Choose a supported callback issue type.");
     }
     if (!CALLBACK_PRIORITIES.includes(priority)) {
@@ -113,4 +132,3 @@ export async function POST(request: Request) {
     return callbackRouteError(error);
   }
 }
-
