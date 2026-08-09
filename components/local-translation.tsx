@@ -1,12 +1,12 @@
 "use client";
 
 import {
+  AudioLines,
   Languages,
   LoaderCircle,
   Mic,
   Play,
   RotateCcw,
-  Volume2,
   X,
 } from "lucide-react";
 import {
@@ -71,7 +71,7 @@ const otherLanguages: Array<{ code: OtherLanguageCode; label: string; native: st
 const phaseLabels: Record<Phase, string> = {
   idle: "Ready to translate",
   "requesting-permission": "Opening microphone…",
-  recording: "Listening… release when finished",
+  recording: "Listening…",
   transcribing: "Understanding speech…",
   translating: "Translating message…",
   speaking: "Playing translation…",
@@ -100,6 +100,10 @@ function fileExtension(mimeType: string) {
   return "webm";
 }
 
+function hapticFeedback(pattern: number | number[]) {
+  if (typeof navigator.vibrate === "function") navigator.vibrate(pattern);
+}
+
 async function apiErrorMessage(response: Response) {
   try {
     const body = (await response.json()) as ApiErrorPayload;
@@ -121,6 +125,8 @@ export function LocalTranslation() {
     useState<OtherLanguageCode>("kn-IN");
   const [interactionMode, setInteractionMode] =
     useState<InteractionMode>("hold");
+  const [selectedDirection, setSelectedDirection] =
+    useState<Direction>("rider");
   const [phase, setPhase] = useState<Phase>("idle");
   const [activeDirection, setActiveDirection] = useState<Direction | null>(null);
   const [result, setResult] = useState<TranslationResult | null>(null);
@@ -189,6 +195,7 @@ export function LocalTranslation() {
   function openSheet() {
     const savedLanguage = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
     if (isOtherLanguage(savedLanguage)) setOtherLanguage(savedLanguage);
+    setSelectedDirection("rider");
     setOpen(true);
   }
 
@@ -449,6 +456,7 @@ export function LocalTranslation() {
       recorder.start(250);
       setPhase("recording");
       recordingTimerRef.current = setTimeout(() => {
+        hapticFeedback([16, 40, 16]);
         pressActiveRef.current = false;
         stopRecording();
       }, MAX_RECORDING_MS);
@@ -469,6 +477,7 @@ export function LocalTranslation() {
     if (interactionMode !== "hold" || event.button !== 0) return;
     event.preventDefault();
     event.currentTarget.setPointerCapture(event.pointerId);
+    hapticFeedback(12);
     pressActiveRef.current = true;
     void startRecording(direction);
   }
@@ -479,6 +488,7 @@ export function LocalTranslation() {
     if (event.currentTarget.hasPointerCapture(event.pointerId)) {
       event.currentTarget.releasePointerCapture(event.pointerId);
     }
+    if (pressActiveRef.current) hapticFeedback(8);
     stopRecording();
   }
 
@@ -509,10 +519,12 @@ export function LocalTranslation() {
   function onTap(direction: Direction) {
     if (interactionMode !== "tap") return;
     if (phase === "recording" && activeDirection === direction) {
+      hapticFeedback([8, 24, 8]);
       stopRecording();
       return;
     }
     if (!busy) {
+      hapticFeedback(12);
       pressActiveRef.current = true;
       void startRecording(direction);
     }
@@ -538,13 +550,15 @@ export function LocalTranslation() {
     }
   }
 
-  function recordingButton(direction: Direction) {
+  function recordingButton() {
+    const direction = selectedDirection;
     const rider = direction === "rider";
     const active = phase === "recording" && activeDirection === direction;
-    const disabled = busy && !active;
+    const disabled =
+      busy && phase !== "requesting-permission" && phase !== "recording";
     const title = rider
-      ? `Ram speaks ${languageNames[RIDER_LANGUAGE]}`
-      : `Other person speaks ${languageNames[otherLanguage]}`;
+      ? `You are speaking ${languageNames[RIDER_LANGUAGE]}`
+      : `Other person is speaking ${languageNames[otherLanguage]}`;
     const helper =
       interactionMode === "hold"
         ? active
@@ -569,12 +583,10 @@ export function LocalTranslation() {
         onClick={() => onTap(direction)}
       >
         <span className="translation-talk-icon">
-          {active ? <Volume2 size={24} /> : <Mic size={24} />}
+          {active ? <AudioLines size={38} /> : <Mic size={38} />}
         </span>
-        <span>
-          <strong>{title}</strong>
-          <small>{helper}</small>
-        </span>
+        <strong>{active ? "Listening" : interactionMode === "hold" ? "Hold to speak" : "Tap to speak"}</strong>
+        <small>{active ? helper : rider ? "Speak as you" : "Pass the phone"}</small>
       </button>
     );
   }
@@ -588,7 +600,7 @@ export function LocalTranslation() {
           onClick={openSheet}
           aria-label="Open local language translation"
         >
-          <Languages size={21} />
+          <Languages size={23} />
           <span>Translate</span>
         </button>
       )}
@@ -610,9 +622,9 @@ export function LocalTranslation() {
             <div className="translation-sheet-handle" aria-hidden="true" />
             <header className="translation-sheet-header">
               <div>
-                <span className="translation-eyebrow">Local translation</span>
-                <h2 id="translation-title">Speak. Hear. Continue.</h2>
-                <p>No typing and no language detection.</p>
+                <span className="translation-eyebrow">Quick translation</span>
+                <h2 id="translation-title">Who’s speaking?</h2>
+                <p>Choose a person, then hold the mic.</p>
               </div>
               <button
                 ref={closeButtonRef}
@@ -625,50 +637,73 @@ export function LocalTranslation() {
               </button>
             </header>
 
-            <div className="translation-language-block">
-              <div className="translation-language-heading">
+            <div className="translation-language-settings">
+              <div className="translation-language-row">
+                <span>You speak</span>
+                <strong>{languageNames[RIDER_LANGUAGE]}</strong>
+              </div>
+              <label className="translation-language-row">
                 <span>Other person speaks</span>
-                <strong>{languageNames[otherLanguage]}</strong>
-              </div>
-              <div className="translation-language-options" aria-label="Other person’s language">
-                {otherLanguages.map((language) => (
-                  <button
-                    type="button"
-                    key={language.code}
-                    className={otherLanguage === language.code ? "selected" : ""}
-                    aria-pressed={otherLanguage === language.code}
-                    disabled={busy}
-                    onClick={() => selectOtherLanguage(language.code)}
-                  >
-                    <strong>{language.native}</strong>
-                    <small>{language.label}</small>
-                  </button>
-                ))}
+                <select
+                  value={otherLanguage}
+                  disabled={busy}
+                  aria-label="Other person’s language"
+                  onChange={(event) => {
+                    if (isOtherLanguage(event.target.value)) {
+                      selectOtherLanguage(event.target.value);
+                    }
+                  }}
+                >
+                  {otherLanguages.map((language) => (
+                    <option key={language.code} value={language.code}>
+                      {language.native} · {language.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div className="translation-speaker-picker">
+              <span>Speaking now</span>
+              <div role="group" aria-label="Choose who is speaking">
+                <button
+                  type="button"
+                  className={selectedDirection === "rider" ? "selected" : ""}
+                  aria-pressed={selectedDirection === "rider"}
+                  disabled={busy}
+                  onClick={() => setSelectedDirection("rider")}
+                >
+                  <span>Y</span>
+                  <strong>You</strong>
+                </button>
+                <button
+                  type="button"
+                  className={selectedDirection === "other" ? "selected" : ""}
+                  aria-pressed={selectedDirection === "other"}
+                  disabled={busy}
+                  onClick={() => setSelectedDirection("other")}
+                >
+                  <span>O</span>
+                  <strong>Other person</strong>
+                </button>
               </div>
             </div>
 
-            <div className="translation-mode-row">
-              <span>{interactionMode === "hold" ? "Hold mode" : "Tap mode"}</span>
-              <button
-                type="button"
-                aria-pressed={interactionMode === "tap"}
-                disabled={busy}
-                onClick={() =>
-                  setInteractionMode((current) => (current === "hold" ? "tap" : "hold"))
-                }
-              >
-                {interactionMode === "hold" ? "Prefer tapping?" : "Use press and hold"}
-              </button>
-            </div>
-
-            <div className="translation-talk-grid">
-              {recordingButton("rider")}
+            <div className="translation-talk-stage">
               <div className="translation-direction" aria-hidden="true">
-                <span>{languageNames[RIDER_LANGUAGE]}</span>
-                <i>⇄</i>
-                <span>{languageNames[otherLanguage]}</span>
+                <span>
+                  {selectedDirection === "rider"
+                    ? languageNames[RIDER_LANGUAGE]
+                    : languageNames[otherLanguage]}
+                </span>
+                <i>→</i>
+                <span>
+                  {selectedDirection === "rider"
+                    ? languageNames[otherLanguage]
+                    : languageNames[RIDER_LANGUAGE]}
+                </span>
               </div>
-              {recordingButton("other")}
+              {recordingButton()}
             </div>
 
             <div className={`translation-status ${phase}`} aria-live="polite">
@@ -677,13 +712,33 @@ export function LocalTranslation() {
               ) : phase === "recording" ? (
                 <span className="translation-live-dot" />
               ) : null}
-              <span>{phaseLabels[phase]}</span>
+              <span>
+                {phase === "recording"
+                  ? interactionMode === "hold"
+                    ? "Listening… release when finished"
+                    : "Listening… tap again when finished"
+                  : phaseLabels[phase]}
+              </span>
+            </div>
+
+            <div className="translation-mode-row">
+              <span>{interactionMode === "hold" ? "Press-and-hold mode" : "Tap mode"}</span>
+              <button
+                type="button"
+                aria-pressed={interactionMode === "tap"}
+                disabled={busy}
+                onClick={() =>
+                  setInteractionMode((current) => (current === "hold" ? "tap" : "hold"))
+                }
+              >
+                {interactionMode === "hold" ? "Use tap instead" : "Use press and hold"}
+              </button>
             </div>
 
             {result && (
               <div className="translation-result">
                 <div>
-                  <small>You heard • {languageNames[result.sourceLanguage]}</small>
+                  <small>Original • {languageNames[result.sourceLanguage]}</small>
                   <p>{result.sourceText}</p>
                 </div>
                 <div className="translated">
