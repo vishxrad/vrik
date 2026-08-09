@@ -28,6 +28,8 @@ import {
   X,
 } from "lucide-react";
 
+import { LocalTranslation } from "@/components/local-translation";
+
 type Tab = "home" | "earnings" | "history" | "support";
 
 const navItems = [
@@ -148,6 +150,8 @@ export default function DeliveryPartnerApp() {
             );
           })}
         </nav>
+
+        {orderStage < 3 && <LocalTranslation />}
 
         {toast && (
           <div className="sushi-toast" role="status">
