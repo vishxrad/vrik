@@ -148,7 +148,7 @@ function sessionUrl(baseUrl, overrides = {}) {
     workspaceId,
     appId,
     interactionType: "call",
-    version: "1",
+    version: "2",
     ...overrides,
   };
   const url = new URL(
@@ -192,7 +192,7 @@ test("voice-agent session proxy", { timeout: 60_000 }, async (t) => {
       path: `/orgs/${orgId}/workspaces/${workspaceId}/apps/${appId}/url`,
       query: {
         interaction_type: "call",
-        version: "1",
+        version: "2",
         user_identifier: "rider-R-108",
         user_identifier_type: "custom",
       },
@@ -218,7 +218,7 @@ test("voice-agent session proxy", { timeout: 60_000 }, async (t) => {
     assert.equal(wrongAgent.status, 404);
     assert.equal((await errorBody(wrongAgent)).code, "AGENT_NOT_FOUND");
 
-    const wrongVersion = await fetch(sessionUrl(baseUrl, { version: "2" }), {
+    const wrongVersion = await fetch(sessionUrl(baseUrl, { version: "3" }), {
       headers: { "X-Forwarded-For": "10.0.0.2" },
     });
     assert.equal(wrongVersion.status, 400);
