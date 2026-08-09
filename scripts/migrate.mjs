@@ -1,10 +1,11 @@
 import { readFile } from "node:fs/promises";
 import { fileURLToPath } from "node:url";
 
-import { loadEnvConfig } from "@next/env";
+import nextEnv from "@next/env";
 import { neon } from "@neondatabase/serverless";
 
 const projectRoot = fileURLToPath(new URL("../", import.meta.url));
+const { loadEnvConfig } = nextEnv;
 loadEnvConfig(projectRoot);
 
 if (!process.env.DATABASE_URL) {
@@ -16,7 +17,13 @@ const migration = await readFile(
   "utf8",
 );
 const sql = neon(process.env.DATABASE_URL);
-await sql.query(migration);
+const statements = migration
+  .split(/;\s*(?:\r?\n|$)/)
+  .map((statement) => statement.trim())
+  .filter(Boolean);
+
+for (const statement of statements) {
+  await sql.query(statement);
+}
 
 console.log("Applied 0001_support_callbacks.sql");
-
