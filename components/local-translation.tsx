@@ -19,7 +19,7 @@ import {
 } from "react";
 
 type LanguageCode = "ta-IN" | "kn-IN" | "hi-IN" | "en-IN";
-type OtherLanguageCode = Exclude<LanguageCode, "ta-IN">;
+type OtherLanguageCode = Exclude<LanguageCode, "hi-IN">;
 type Direction = "rider" | "other";
 type InteractionMode = "hold" | "tap";
 type Phase =
@@ -51,7 +51,7 @@ type ApiErrorPayload = {
   };
 };
 
-const RIDER_LANGUAGE: LanguageCode = "ta-IN";
+const RIDER_LANGUAGE: LanguageCode = "hi-IN";
 const LANGUAGE_STORAGE_KEY = "local-translation.counterpart-language";
 const MAX_RECORDING_MS = 15_000;
 
@@ -63,7 +63,7 @@ const languageNames: Record<LanguageCode, string> = {
 };
 
 const otherLanguages: Array<{ code: OtherLanguageCode; label: string; native: string }> = [
-  { code: "hi-IN", label: "Hindi", native: "हिंदी" },
+  { code: "ta-IN", label: "Tamil", native: "தமிழ்" },
   { code: "kn-IN", label: "Kannada", native: "ಕನ್ನಡ" },
   { code: "en-IN", label: "English", native: "English" },
 ];
@@ -118,7 +118,7 @@ async function jsonResponse<T>(response: Response) {
 export function LocalTranslation() {
   const [open, setOpen] = useState(false);
   const [otherLanguage, setOtherLanguage] =
-    useState<OtherLanguageCode>("hi-IN");
+    useState<OtherLanguageCode>("kn-IN");
   const [interactionMode, setInteractionMode] =
     useState<InteractionMode>("hold");
   const [phase, setPhase] = useState<Phase>("idle");
@@ -543,7 +543,7 @@ export function LocalTranslation() {
     const active = phase === "recording" && activeDirection === direction;
     const disabled = busy && !active;
     const title = rider
-      ? "Ram speaks Tamil"
+      ? `Ram speaks ${languageNames[RIDER_LANGUAGE]}`
       : `Other person speaks ${languageNames[otherLanguage]}`;
     const helper =
       interactionMode === "hold"
@@ -664,7 +664,7 @@ export function LocalTranslation() {
             <div className="translation-talk-grid">
               {recordingButton("rider")}
               <div className="translation-direction" aria-hidden="true">
-                <span>Tamil</span>
+                <span>{languageNames[RIDER_LANGUAGE]}</span>
                 <i>⇄</i>
                 <span>{languageNames[otherLanguage]}</span>
               </div>
