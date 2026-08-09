@@ -193,9 +193,11 @@ async function startMockSarvam(t) {
 function audioForm({
   type = "audio/webm;codecs=opus",
   bytes = Buffer.from("recorded-audio"),
+  languageCode,
 } = {}) {
   const form = new FormData();
   form.append("audio", new File([bytes], "turn.webm", { type }));
+  if (languageCode) form.append("languageCode", languageCode);
   return form;
 }
 
@@ -231,6 +233,22 @@ test("local translation route handlers", { timeout: 60_000 }, async (t) => {
       fileName: "turn.webm",
       fileType: "audio/webm",
     });
+  });
+
+  await t.test("pins the language for short callback turns", async () => {
+    const response = await fetch(`${baseUrl}/api/local-translation/transcribe`, {
+      method: "POST",
+      body: audioForm({ languageCode: "hi-IN" }),
+    });
+    assert.equal(response.status, 200);
+    assert.equal(mock.state.requests.at(-1).languageCode, "hi-IN");
+
+    const unsupported = await fetch(`${baseUrl}/api/local-translation/transcribe`, {
+      method: "POST",
+      body: audioForm({ languageCode: "bn-IN" }),
+    });
+    assert.equal(unsupported.status, 400);
+    assert.equal((await errorBody(unsupported)).code, "UNSUPPORTED_LANGUAGE");
   });
 
   await t.test("rejects a detected language outside the supported set", async () => {

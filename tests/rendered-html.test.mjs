@@ -80,3 +80,43 @@ test("serves the delivery partner interface at the root route", { timeout: 30_00
   assert.match(html, /AI support/i);
   assert.doesNotMatch(html, /codex-preview/i);
 });
+
+test("serves the translated support callback console", { timeout: 30_000 }, async (t) => {
+  const port = await availablePort();
+  const processExited = { value: false, output: "" };
+  const nextProcess = spawn(
+    process.execPath,
+    ["node_modules/next/dist/bin/next", "start", "--hostname", "127.0.0.1", "--port", String(port)],
+    {
+      cwd: projectRoot,
+      env: { ...process.env, NEXT_TELEMETRY_DISABLED: "1" },
+      stdio: ["ignore", "pipe", "pipe"],
+    },
+  );
+
+  nextProcess.stdout.on("data", (chunk) => {
+    processExited.output += chunk;
+  });
+  nextProcess.stderr.on("data", (chunk) => {
+    processExited.output += chunk;
+  });
+  nextProcess.once("exit", () => {
+    processExited.value = true;
+  });
+
+  t.after(() => {
+    if (!processExited.value) nextProcess.kill("SIGTERM");
+  });
+
+  const response = await waitForPage(
+    `http://127.0.0.1:${port}/support/call/ram`,
+    processExited,
+  );
+  assert.equal(response.status, 200);
+  const html = await response.text();
+  assert.match(html, /Translated callback console/i);
+  assert.match(html, /Callback requests/i);
+  assert.match(html, /Call Ram/i);
+  assert.match(html, /Support speaks English/i);
+  assert.match(html, /Ram hears Hindi/i);
+});

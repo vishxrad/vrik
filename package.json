@@ -7,13 +7,17 @@
   },
   "scripts": {
     "dev": "next dev",
+    "db:migrate": "node scripts/migrate.mjs",
     "build": "next build",
     "start": "next start",
     "test": "npm run build && node --test tests/*.test.mjs",
     "lint": "eslint ."
   },
   "dependencies": {
+    "@neondatabase/serverless": "^1.1.0",
     "@typehaus/metropolis": "^12.0.0-next.7",
+    "livekit-client": "^2.21.0",
+    "livekit-server-sdk": "^2.17.0",
     "lucide-react": "^1.30.0",
     "next": "^16.3.0",
     "react": "19.2.6",

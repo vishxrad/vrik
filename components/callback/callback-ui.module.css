@@ -1,0 +1,676 @@
+.operatorPage {
+  min-height: 100dvh;
+  color: var(--sushi-peppercorn);
+  background:
+    radial-gradient(circle at 12% 8%, rgba(226, 55, 68, 0.1), transparent 28rem),
+    linear-gradient(180deg, #fbfbfa, var(--sushi-tyrolean));
+}
+
+.operatorHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 24px;
+  min-height: 72px;
+  padding: 0 clamp(20px, 4vw, 56px);
+  border-bottom: 1px solid var(--sushi-grey-200);
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(14px);
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.brandMark {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 12px;
+  color: white;
+  background: var(--sushi-red-500);
+}
+
+.brand strong,
+.brand small {
+  display: block;
+}
+
+.brand strong {
+  font-size: 15px;
+  line-height: 20px;
+}
+
+.brand small {
+  color: var(--sushi-grey-500);
+  font-size: 10px;
+  line-height: 14px;
+}
+
+.agentStatus {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--sushi-green-500);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.agentStatus::before {
+  content: "";
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: currentColor;
+  box-shadow: 0 0 0 4px var(--sushi-green-050);
+}
+
+.operatorMain {
+  display: grid;
+  grid-template-columns: minmax(280px, 380px) minmax(420px, 1fr);
+  gap: clamp(20px, 3vw, 36px);
+  width: min(1180px, calc(100% - 40px));
+  margin: 0 auto;
+  padding: clamp(24px, 4vw, 52px) 0;
+}
+
+.sidebar,
+.callPanel {
+  border: 1px solid var(--sushi-grey-200);
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.94);
+  box-shadow: 0 18px 50px rgba(45, 45, 45, 0.08);
+}
+
+.sidebar {
+  align-self: start;
+  overflow: hidden;
+}
+
+.queueHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 22px;
+  border-bottom: 1px solid var(--sushi-grey-100);
+}
+
+.queueHeader h1,
+.queueHeader p {
+  margin: 0;
+}
+
+.queueHeader h1 {
+  font-size: 20px;
+  line-height: 26px;
+}
+
+.queueHeader p {
+  margin-top: 4px;
+  color: var(--sushi-grey-500);
+  font-size: 10px;
+  line-height: 15px;
+}
+
+.queueCount {
+  min-width: 28px;
+  padding: 5px 8px;
+  border-radius: 999px;
+  color: var(--sushi-red-600);
+  background: var(--sushi-red-050);
+  text-align: center;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.requestCard {
+  padding: 20px 22px;
+  border-left: 4px solid var(--sushi-red-500);
+  background: linear-gradient(90deg, var(--sushi-red-050), white 44%);
+}
+
+.requestMeta,
+.priority {
+  display: flex;
+  align-items: center;
+}
+
+.requestMeta {
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.requestMeta span:first-child {
+  color: var(--sushi-grey-500);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.priority {
+  gap: 5px;
+  padding: 4px 7px;
+  border-radius: 999px;
+  color: #8a5a08;
+  background: var(--sushi-amber-050);
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.riderRow {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  align-items: center;
+  gap: 12px;
+  margin-top: 18px;
+}
+
+.avatar,
+.callAvatar {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: white;
+  background: linear-gradient(145deg, #434343, #242424);
+  font-weight: 700;
+}
+
+.avatar {
+  width: 42px;
+  height: 42px;
+  font-size: 11px;
+}
+
+.riderRow strong,
+.riderRow small {
+  display: block;
+}
+
+.riderRow strong {
+  font-size: 13px;
+  line-height: 18px;
+}
+
+.riderRow small {
+  margin-top: 2px;
+  color: var(--sushi-grey-500);
+  font-size: 9px;
+  line-height: 14px;
+}
+
+.issueTitle {
+  margin: 18px 0 0;
+  font-size: 13px;
+  line-height: 19px;
+  font-weight: 650;
+}
+
+.issueSummary {
+  margin: 6px 0 0;
+  color: var(--sushi-grey-500);
+  font-size: 10px;
+  line-height: 16px;
+}
+
+.orderFacts {
+  display: grid;
+  gap: 10px;
+  margin: 18px 0 0;
+  padding: 14px;
+  border-radius: 12px;
+  background: var(--sushi-tyrolean);
+}
+
+.orderFacts div {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  font-size: 9px;
+  line-height: 14px;
+}
+
+.orderFacts dt {
+  color: var(--sushi-grey-500);
+}
+
+.orderFacts dd {
+  margin: 0;
+  text-align: right;
+  font-weight: 650;
+}
+
+.callPanel {
+  display: flex;
+  min-height: 650px;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.callHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 18px 22px;
+  border-bottom: 1px solid var(--sushi-grey-100);
+}
+
+.languageBridge {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: var(--sushi-grey-500);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.languageBridge span {
+  padding: 5px 8px;
+  border-radius: 8px;
+  background: var(--sushi-tyrolean);
+}
+
+.demoBadge {
+  padding: 5px 9px;
+  border-radius: 999px;
+  color: #76520e;
+  background: var(--sushi-amber-050);
+  font-size: 9px;
+  font-weight: 650;
+}
+
+.callBody {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 30px;
+  text-align: center;
+}
+
+.callAvatar {
+  position: relative;
+  width: 104px;
+  height: 104px;
+  border: 6px solid white;
+  box-shadow: 0 0 0 1px var(--sushi-grey-200), 0 16px 38px rgba(45, 45, 45, 0.16);
+  font-size: 24px;
+}
+
+.callAvatar.ringing::after,
+.callAvatar.connected::after {
+  content: "";
+  position: absolute;
+  inset: -12px;
+  border: 2px solid var(--sushi-red-500);
+  border-radius: 50%;
+  animation: ring 1.5s ease-out infinite;
+}
+
+.callAvatar.connected::after {
+  border-color: var(--sushi-green-500);
+}
+
+.callBody h2,
+.callBody p {
+  margin: 0;
+}
+
+.callBody h2 {
+  margin-top: 22px;
+  font-size: 24px;
+  line-height: 30px;
+}
+
+.callBody > p {
+  max-width: 500px;
+  margin-top: 7px;
+  color: var(--sushi-grey-500);
+  font-size: 11px;
+  line-height: 17px;
+}
+
+.statusLine {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 30px;
+  margin-top: 16px;
+  color: var(--sushi-red-500);
+  font-size: 10px;
+  font-weight: 650;
+}
+
+.statusLine.connected {
+  color: var(--sushi-green-500);
+}
+
+.primaryAction,
+.endAction {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 9px;
+  min-width: 180px;
+  min-height: 48px;
+  margin-top: 20px;
+  padding: 10px 18px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.primaryAction {
+  border: 1px solid var(--sushi-red-600);
+  color: white;
+  background: var(--sushi-red-500);
+  box-shadow: 0 9px 22px rgba(137, 24, 33, 0.2);
+}
+
+.primaryAction:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.endAction {
+  border: 1px solid var(--sushi-grey-200);
+  color: var(--sushi-red-500);
+  background: white;
+}
+
+.talkArea {
+  display: grid;
+  place-items: center;
+  margin-top: 24px;
+}
+
+.talkButton {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 128px;
+  height: 128px;
+  padding: 16px;
+  border: 6px solid white;
+  border-radius: 50%;
+  color: white;
+  background: linear-gradient(145deg, #ef4652, var(--sushi-red-600));
+  box-shadow: 0 0 0 1px var(--sushi-red-100), 0 14px 30px rgba(137, 24, 33, 0.24);
+  touch-action: none;
+  cursor: pointer;
+}
+
+.talkButton strong,
+.talkButton small {
+  display: block;
+}
+
+.talkButton strong {
+  margin-top: 5px;
+  font-size: 11px;
+}
+
+.talkButton small {
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 8px;
+}
+
+.talkButton.recording {
+  transform: scale(0.96);
+  box-shadow: 0 0 0 7px rgba(226, 55, 68, 0.18), 0 12px 24px rgba(137, 24, 33, 0.22);
+}
+
+.translationPreview {
+  width: min(100%, 520px);
+  margin-top: 24px;
+  overflow: hidden;
+  border: 1px solid var(--sushi-grey-200);
+  border-radius: 14px;
+  text-align: left;
+}
+
+.translationPreview div {
+  padding: 13px 16px;
+}
+
+.translationPreview div + div {
+  border-top: 1px solid var(--sushi-red-100);
+  background: var(--sushi-red-050);
+}
+
+.translationPreview small,
+.translationPreview p {
+  display: block;
+  margin: 0;
+}
+
+.translationPreview small {
+  color: var(--sushi-grey-500);
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.45px;
+  text-transform: uppercase;
+}
+
+.translationPreview p {
+  margin-top: 5px;
+  font-size: 11px;
+  line-height: 17px;
+}
+
+.hint {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin-top: 20px;
+  color: var(--sushi-grey-500);
+  font-size: 9px;
+  line-height: 14px;
+}
+
+.riderOverlay {
+  position: fixed;
+  z-index: 70;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(20, 20, 20, 0.62);
+  backdrop-filter: blur(5px);
+}
+
+.riderSheet {
+  width: min(100%, 480px);
+  padding: 10px 20px calc(24px + env(safe-area-inset-bottom));
+  border-radius: 28px 28px 0 0;
+  background: white;
+  box-shadow: 0 -16px 48px rgba(0, 0, 0, 0.24);
+  text-align: center;
+}
+
+.sheetHandle {
+  width: 42px;
+  height: 4px;
+  margin: 0 auto 22px;
+  border-radius: 999px;
+  background: var(--sushi-grey-200);
+}
+
+.incomingLabel {
+  color: var(--sushi-red-500);
+  font-size: 9px;
+  line-height: 14px;
+  font-weight: 700;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+}
+
+.riderSheet h2,
+.riderSheet p {
+  margin: 0;
+}
+
+.riderSheet h2 {
+  margin-top: 8px;
+  font-size: 23px;
+  line-height: 29px;
+}
+
+.riderSheet > p {
+  margin-top: 6px;
+  color: var(--sushi-grey-500);
+  font-size: 10px;
+  line-height: 16px;
+}
+
+.languageNotice {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin: 18px auto 0;
+  padding: 10px 12px;
+  border-radius: 12px;
+  color: var(--sushi-green-500);
+  background: var(--sushi-green-050);
+  font-size: 9px;
+  line-height: 14px;
+  font-weight: 650;
+}
+
+.incomingControls {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-top: 22px;
+}
+
+.incomingControls button {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 50px;
+  border-radius: 14px;
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.declineButton {
+  border: 1px solid var(--sushi-grey-200);
+  color: var(--sushi-red-500);
+  background: white;
+}
+
+.acceptButton {
+  border: 1px solid #216442;
+  color: white;
+  background: var(--sushi-green-500);
+}
+
+.riderTalk {
+  display: grid;
+  place-items: center;
+  width: 144px;
+  height: 144px;
+  margin: 24px auto 0;
+  border: 6px solid white;
+  border-radius: 50%;
+  color: white;
+  background: linear-gradient(145deg, #33815a, #216442);
+  box-shadow: 0 0 0 1px rgba(38, 126, 82, 0.25), 0 14px 30px rgba(31, 104, 67, 0.22);
+  touch-action: none;
+}
+
+.riderTalk strong,
+.riderTalk small {
+  display: block;
+}
+
+.riderTalk strong {
+  margin-top: 5px;
+  font-size: 12px;
+}
+
+.riderTalk small {
+  margin-top: 2px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 8px;
+}
+
+.riderEnd {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 20px;
+  padding: 9px 13px;
+  border: 1px solid var(--sushi-grey-200);
+  border-radius: 999px;
+  color: var(--sushi-red-500);
+  background: white;
+  font-size: 9px;
+  font-weight: 650;
+}
+
+@keyframes ring {
+  from { opacity: 0.55; transform: scale(0.92); }
+  to { opacity: 0; transform: scale(1.22); }
+}
+
+@media (max-width: 820px) {
+  .operatorMain {
+    grid-template-columns: 1fr;
+  }
+
+  .callPanel {
+    min-height: 580px;
+  }
+}
+
+@media (max-width: 560px) {
+  .operatorHeader {
+    padding-inline: 16px;
+  }
+
+  .operatorMain {
+    width: calc(100% - 24px);
+    padding-block: 18px;
+  }
+
+  .languageBridge span {
+    display: none;
+  }
+
+  .callBody {
+    padding: 22px 16px;
+  }
+}
+
+@media (min-width: 600px) {
+  .riderOverlay {
+    align-items: center;
+    padding: 24px;
+  }
+
+  .riderSheet {
+    border-radius: 28px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .callAvatar::after {
+    animation: none !important;
+  }
+}
+

@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 
 import { LocalTranslation } from "@/components/local-translation";
+import { RiderCallbackCall } from "@/components/callback/rider-callback-call";
 import { SupportAgentCall } from "@/components/support-agent-call";
 
 type Tab = "home" | "earnings" | "history" | "support";
@@ -164,6 +165,7 @@ export default function DeliveryPartnerApp() {
           open={supportCallOpen}
           onClose={() => setSupportCallOpen(false)}
         />
+        <RiderCallbackCall onIncoming={() => setSupportCallOpen(false)} />
 
         {toast && (
           <div className="sushi-toast" role="status">

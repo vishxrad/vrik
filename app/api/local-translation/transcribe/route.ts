@@ -37,6 +37,7 @@ export async function POST(request: Request) {
   try {
     const formData = await request.formData();
     const audio = formData.get("audio");
+    const requestedLanguage = formData.get("languageCode");
 
     if (!(audio instanceof File) || audio.size === 0) {
       return jsonError(
@@ -66,6 +67,15 @@ export async function POST(request: Request) {
       );
     }
 
+    if (requestedLanguage !== null && !isLocalLanguageCode(requestedLanguage)) {
+      return jsonError(
+        400,
+        "UNSUPPORTED_LANGUAGE",
+        "Choose Tamil, Kannada, Hindi, or English.",
+        false,
+      );
+    }
+
     const upstreamForm = new FormData();
     const upstreamAudio = new File([audio], audio.name || "recording.webm", {
       type: audioMimeType,
@@ -74,6 +84,7 @@ export async function POST(request: Request) {
     upstreamForm.append("file", upstreamAudio, upstreamAudio.name);
     upstreamForm.append("model", "saaras:v3");
     upstreamForm.append("mode", "transcribe");
+    if (requestedLanguage) upstreamForm.append("language_code", requestedLanguage);
 
     const upstream = await sarvamFetch("speech-to-text", {
       method: "POST",
