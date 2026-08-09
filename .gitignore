@@ -15,7 +15,6 @@
 
 # next.js
 /.next/
-/.vinext/
 /out/
 
 # misc
@@ -34,7 +33,7 @@ yarn-error.log*
 # vercel
 .vercel
 
-/dist/
+# legacy local build artifacts
+/.vinext/
 /.wrangler/
-/outputs/
-/work/
+/dist/

@@ -15,7 +15,6 @@ import {
   History,
   Home,
   IndianRupee,
-  MapPin,
   MessageCircle,
   Navigation,
   PackageCheck,
