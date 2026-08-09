@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import {
   CircleAlert,
   Headphones,
@@ -33,6 +33,7 @@ export function SupportCallbackConsole() {
   const [notice, setNotice] = useState("Ready to call Ram in the partner app");
   const [callback, setCallback] = useState<CallbackApiRecord | null>(null);
   const [databaseReady, setDatabaseReady] = useState<boolean | null>(null);
+  const callbackIdRef = useRef("");
   const call = useLivekitAudioCall("support");
   const disconnectCall = call.disconnect;
 
@@ -45,6 +46,18 @@ export function SupportCallbackConsole() {
       }
       const body = (await response.json()) as { callback: CallbackApiRecord | null };
       setDatabaseReady(true);
+      if (!body.callback) {
+        const hadCallback = Boolean(callbackIdRef.current);
+        callbackIdRef.current = "";
+        setCallback(null);
+        if (hadCallback) {
+          setState("ended");
+          setNotice("Callback ended");
+          void disconnectCall();
+        }
+        return;
+      }
+      callbackIdRef.current = body.callback.id;
       setCallback(body.callback);
       if (body.callback?.status === "ringing") {
         setState("ringing");
@@ -57,7 +70,7 @@ export function SupportCallbackConsole() {
     } catch {
       setDatabaseReady(false);
     }
-  }, []);
+  }, [disconnectCall]);
 
   useEffect(() => {
     const channel = openCallbackDemoChannel((event: CallbackDemoEvent) => {
@@ -68,10 +81,15 @@ export function SupportCallbackConsole() {
       if (event.type === "decline") {
         setState("ready");
         setNotice("Ram declined the callback");
+        callbackIdRef.current = "";
+        setCallback(null);
+        void disconnectCall();
       }
       if (event.type === "end") {
         setState("ended");
         setNotice("Callback ended");
+        callbackIdRef.current = "";
+        setCallback(null);
         void disconnectCall();
       }
     });
@@ -109,6 +127,7 @@ export function SupportCallbackConsole() {
 
       setDatabaseReady(true);
       setCallback(nextCallback);
+      callbackIdRef.current = nextCallback.id;
       const joined = await call.connect(nextCallback.id);
       if (!joined) setNotice("The audio room could not connect. Retry or cancel the callback.");
 
@@ -140,6 +159,7 @@ export function SupportCallbackConsole() {
     setState("ended");
     setNotice("Callback ended");
     setCallback(null);
+    callbackIdRef.current = "";
     await call.disconnect();
     publishCallbackDemoEvent({ type: "end", at: Date.now(), callbackId: callback?.id });
   }
