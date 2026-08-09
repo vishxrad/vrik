@@ -6,12 +6,12 @@ import {
   Bell,
   Bike,
   Check,
+  ChevronDown,
   ChevronRight,
+  CircleAlert,
   Clock3,
-  Compass,
   Gift,
   Headphones,
-  HelpCircle,
   History,
   Home,
   IndianRupee,
@@ -20,13 +20,12 @@ import {
   Navigation,
   PackageCheck,
   Phone,
-  Power,
   ReceiptText,
   ShieldCheck,
   Star,
   Store,
   UserRound,
-  WalletCards,
+  Wallet,
   X,
 } from "lucide-react";
 
@@ -34,39 +33,39 @@ type Tab = "home" | "earnings" | "history" | "support";
 
 const navItems = [
   { id: "home" as const, label: "Home", icon: Home },
-  { id: "earnings" as const, label: "Earnings", icon: WalletCards },
+  { id: "earnings" as const, label: "Earnings", icon: Wallet },
   { id: "history" as const, label: "History", icon: History },
   { id: "support" as const, label: "Support", icon: Headphones },
 ];
 
 const orderStages = [
   {
-    eyebrow: "NEW ORDER",
-    title: "Head to the restaurant",
-    subtitle: "Pickup is 1.8 km away",
-    action: "I’m at the restaurant",
+    status: "Pickup",
+    title: "Head to Empire Restaurant",
+    message: "Pick up by 8:42 PM",
+    action: "I’ve reached the restaurant",
   },
   {
-    eyebrow: "AT PICKUP",
+    status: "At restaurant",
     title: "Collect order #4821",
-    subtitle: "Ask for the order at the counter",
-    action: "Order picked up",
+    message: "2 items • Paid online",
+    action: "I’ve picked up the order",
   },
   {
-    eyebrow: "ON THE WAY",
+    status: "Delivery",
     title: "Deliver to Ananya",
-    subtitle: "Customer is 3.2 km away",
-    action: "Mark as delivered",
+    message: "Reach by 9:06 PM",
+    action: "Complete delivery",
   },
   {
-    eyebrow: "DELIVERED",
-    title: "Nice work, Ram!",
-    subtitle: "₹62 has been added to your earnings",
-    action: "Find next order",
+    status: "Delivered",
+    title: "Order delivered",
+    message: "₹62 added to today’s earnings",
+    action: "Find another order",
   },
 ];
 
-export default function HomePage() {
+export default function DeliveryPartnerApp() {
   const [activeTab, setActiveTab] = useState<Tab>("home");
   const [online, setOnline] = useState(true);
   const [orderStage, setOrderStage] = useState(0);
@@ -80,112 +79,71 @@ export default function HomePage() {
   const advanceOrder = () => {
     if (orderStage === 3) {
       setOrderStage(0);
-      notify("Searching for a nearby order…");
+      notify("Looking for orders near Indiranagar");
       return;
     }
     setOrderStage((stage) => stage + 1);
-    notify(
-      orderStage === 2
-        ? "Delivery completed — ₹62 earned"
-        : "Order status updated",
-    );
+    notify(orderStage === 2 ? "Delivery completed" : "Order status updated");
   };
 
   return (
-    <main className="site-shell">
-      <section className="phone-app" aria-label="Zomato delivery partner demo">
-        <header className="app-header">
-          <div className="top-row">
-            <div className="wordmark" aria-label="Zomato delivery partner">
-              <span>zomato</span>
-              <small>delivery partner</small>
-            </div>
-            <div className="header-actions">
-              <button
-                className="icon-button light"
-                onClick={() => notify("You’re all caught up")}
-                aria-label="Notifications"
-              >
-                <Bell size={20} strokeWidth={2.3} />
-                <i aria-hidden="true" />
-              </button>
-              <button
-                className="avatar"
-                onClick={() => notify("Profile preview")}
-                aria-label="Open Ram Kumar's profile"
-              >
-                RK
-              </button>
-            </div>
-          </div>
+    <main className="preview-canvas">
+      <section className="partner-app" aria-label="Zomato delivery partner demo">
+        <AppHeader notify={notify} />
 
-          <div className="welcome-row">
+        <div className="partner-status">
+          <div className="partner-status__copy">
+            <span className={`status-dot ${online ? "online" : ""}`} />
             <div>
-              <p>Good evening, Ram</p>
-              <h1>{online ? "Ready to deliver?" : "You’re offline"}</h1>
-            </div>
-            <button
-              className={`online-toggle ${online ? "is-online" : ""}`}
-              onClick={() => {
-                setOnline((value) => !value);
-                notify(online ? "You are now offline" : "You are now online");
-              }}
-              aria-pressed={online}
-            >
-              <Power size={17} strokeWidth={2.5} />
-              {online ? "ONLINE" : "GO ONLINE"}
-            </button>
-          </div>
-        </header>
-
-        <div className="floating-summary" aria-label="Today's delivery summary">
-          <div className="summary-item">
-            <span className="summary-icon red">
-              <IndianRupee size={18} />
-            </span>
-            <div>
-              <strong>₹842</strong>
-              <small>Today’s earnings</small>
+              <strong>{online ? "You’re online" : "You’re offline"}</strong>
+              <small>{online ? "Finding orders near Indiranagar" : "Go online to receive orders"}</small>
             </div>
           </div>
-          <div className="summary-divider" />
-          <div className="summary-item">
-            <span className="summary-icon green">
-              <PackageCheck size={18} />
-            </span>
-            <div>
-              <strong>12</strong>
-              <small>Orders delivered</small>
-            </div>
-          </div>
+          <button
+            className={`sushi-switch ${online ? "selected" : ""}`}
+            onClick={() => {
+              setOnline((value) => !value);
+              notify(online ? "You are now offline" : "You are now online");
+            }}
+            aria-label={online ? "Go offline" : "Go online"}
+            aria-pressed={online}
+          >
+            <span />
+          </button>
         </div>
 
-        <div className="app-content">
+        <div className="today-stats" aria-label="Today’s summary">
+          <div><small>Today’s earnings</small><strong>₹842</strong></div>
+          <div><small>Orders</small><strong>12</strong></div>
+          <div><small>Online</small><strong>6h 24m</strong></div>
+        </div>
+
+        <div className="screen-content">
           {activeTab === "home" && (
-            <HomeView
+            <HomeScreen
               online={online}
               orderStage={orderStage}
               onAdvance={advanceOrder}
               onNotify={notify}
             />
           )}
-          {activeTab === "earnings" && <EarningsView />}
-          {activeTab === "history" && <HistoryView />}
-          {activeTab === "support" && <SupportView onNotify={notify} />}
+          {activeTab === "earnings" && <EarningsScreen />}
+          {activeTab === "history" && <HistoryScreen />}
+          {activeTab === "support" && <SupportScreen onNotify={notify} />}
         </div>
 
         <nav className="bottom-nav" aria-label="Main navigation">
           {navItems.map((item) => {
             const Icon = item.icon;
-            const isActive = activeTab === item.id;
+            const current = activeTab === item.id;
             return (
               <button
                 key={item.id}
-                className={isActive ? "active" : ""}
+                className={current ? "current" : ""}
                 onClick={() => setActiveTab(item.id)}
-                aria-current={isActive ? "page" : undefined}
+                aria-current={current ? "page" : undefined}
               >
-                <Icon size={21} strokeWidth={isActive ? 2.7 : 2} />
+                <Icon size={22} strokeWidth={current ? 2.4 : 1.9} />
                 <span>{item.label}</span>
               </button>
             );
@@ -193,38 +151,39 @@ export default function HomePage() {
         </nav>
 
         {toast && (
-          <div className="toast" role="status">
+          <div className="sushi-toast" role="status">
             <Check size={17} />
-            {toast}
+            <span>{toast}</span>
             <button onClick={() => setToast("")} aria-label="Dismiss message">
-              <X size={15} />
+              <X size={16} />
             </button>
           </div>
         )}
       </section>
-
-      <aside className="desktop-note" aria-label="Demo information">
-        <div className="note-badge">
-          <Bike size={18} />
-          RIDER DEMO
-        </div>
-        <h2>A familiar delivery flow, ready for your voice layer.</h2>
-        <p>
-          This standalone dummy mirrors a practical food-delivery partner app.
-          It intentionally contains no translator, voice agent, or backend
-          integration yet.
-        </p>
-        <div className="demo-checks">
-          <span><Check size={16} /> Mobile-first delivery UI</span>
-          <span><Check size={16} /> Clickable order progression</span>
-          <span><Check size={16} /> Earnings, history and support tabs</span>
-        </div>
-      </aside>
     </main>
   );
 }
 
-function HomeView({
+function AppHeader({ notify }: { notify: (message: string) => void }) {
+  return (
+    <header className="app-bar">
+      <div className="brand-lockup" aria-label="Zomato partner">
+        <span>zomato</span>
+        <small>partner</small>
+      </div>
+      <button className="area-selector" onClick={() => notify("Delivery area opened")}>
+        Indiranagar <ChevronDown size={15} />
+      </button>
+      <button className="app-bar__icon" onClick={() => notify("No new notifications")} aria-label="Notifications">
+        <Bell size={21} />
+        <span aria-hidden="true" />
+      </button>
+      <button className="profile-button" onClick={() => notify("Profile opened")} aria-label="Open Ram Kumar's profile">RK</button>
+    </header>
+  );
+}
+
+function HomeScreen({
   online,
   orderStage,
   onAdvance,
@@ -236,166 +195,133 @@ function HomeView({
   onNotify: (message: string) => void;
 }) {
   const stage = orderStages[orderStage];
-  const isDelivered = orderStage === 3;
+  const delivered = orderStage === 3;
 
   return (
-    <div className="view-stack">
+    <div className="screen-stack">
       {!online && (
-        <button className="offline-card" onClick={() => onNotify("Use the toggle above to go online")}> 
-          <span><Power size={19} /></span>
-          <div>
-            <strong>Go online to receive orders</strong>
-            <small>You won’t get new delivery requests while offline.</small>
-          </div>
-          <ChevronRight size={19} />
+        <button className="sushi-banner sushi-banner--warning" onClick={() => onNotify("Use the status switch to go online")}> 
+          <CircleAlert size={20} />
+          <span><strong>You’re not receiving orders</strong><small>Go online whenever you’re ready.</small></span>
+          <ChevronRight size={18} />
         </button>
       )}
 
-      <section className={`order-card ${isDelivered ? "complete" : ""}`}>
-        <div className="order-card-top">
+      <div className="section-title">
+        <div><h1>Current order</h1><p>Order #4821</p></div>
+        <span className={`status-chip ${delivered ? "success" : ""}`}>{stage.status}</span>
+      </div>
+
+      <section className="sushi-card order-card">
+        <div className={`order-summary ${delivered ? "order-summary--success" : ""}`}>
           <div>
-            <span className="order-label">{stage.eyebrow}</span>
+            <small>{stage.message}</small>
             <h2>{stage.title}</h2>
-            <p>{stage.subtitle}</p>
           </div>
-          <div className="eta-badge">
-            {isDelivered ? <Check size={21} /> : <><strong>{orderStage === 2 ? "12" : "7"}</strong><small>MIN</small></>}
-          </div>
-        </div>
-
-        <div className="order-id-row">
-          <span>ORDER #4821</span>
-          <span><Clock3 size={14} /> Pickup by 8:42 PM</span>
-        </div>
-
-        <div className="route-list">
-          <div className="route-rail" aria-hidden="true">
-            <span className={orderStage >= 1 ? "done" : "current"} />
-            <i className={orderStage >= 2 ? "done" : ""} />
-            <span className={orderStage >= 3 ? "done" : ""} />
-          </div>
-          <div className="route-stop">
-            <div>
-              <small>PICKUP</small>
-              <strong>Empire Restaurant</strong>
-              <p>Church Street, Ashok Nagar</p>
-            </div>
-            <button onClick={() => onNotify("Calling restaurant…")} aria-label="Call Empire Restaurant">
-              <Phone size={18} />
-            </button>
-          </div>
-          <div className="route-stop">
-            <div>
-              <small>DELIVER TO</small>
-              <strong>Ananya • Home</strong>
-              <p>Tower C, Indiranagar</p>
-            </div>
-            <button onClick={() => onNotify("Calling customer…")} aria-label="Call customer Ananya">
-              <Phone size={18} />
-            </button>
+          <div className="eta-value">
+            {delivered ? <PackageCheck size={24} /> : <><strong>{orderStage === 2 ? "12" : "7"}</strong><small>min</small></>}
           </div>
         </div>
 
-        <div className="order-actions">
-          <button className="secondary-action" onClick={() => onNotify("Opening directions…")}>
-            <Navigation size={18} /> Directions
-          </button>
-          <button className="primary-action" onClick={onAdvance}>
-            {isDelivered ? <Bike size={19} /> : <MapPin size={19} />}
-            {stage.action}
-          </button>
+        <div className="route">
+          <div className="route__markers" aria-hidden="true">
+            <span className={orderStage >= 1 ? "complete" : "active"} />
+            <i className={orderStage >= 2 ? "complete" : ""} />
+            <span className={orderStage >= 3 ? "complete" : ""} />
+          </div>
+          <div className="route__stop">
+            <small>Pickup from</small>
+            <strong>Empire Restaurant</strong>
+            <p>Church Street, Ashok Nagar</p>
+          </div>
+          <div className="route__stop">
+            <small>Deliver to</small>
+            <strong>Ananya • Home</strong>
+            <p>Tower C, Indiranagar</p>
+          </div>
         </div>
+
+        <div className="order-meta">
+          <span><Bike size={17} /> 5.0 km total</span>
+          <span><BadgeIndianRupee size={17} /> Earn ₹62</span>
+        </div>
+
+        <div className="order-tools" aria-label="Order actions">
+          <button onClick={() => onNotify("Calling restaurant")}><Phone size={19} /><span>Call</span></button>
+          <button onClick={() => onNotify("Opening directions")}><Navigation size={19} /><span>Directions</span></button>
+          <button onClick={() => onNotify("Order help opened")}><Headphones size={19} /><span>Help</span></button>
+        </div>
+
+        <button className={`sushi-button sushi-button--primary ${delivered ? "sushi-button--success" : ""}`} onClick={onAdvance}>
+          {stage.action}
+        </button>
       </section>
 
-      <button className="incentive-card" onClick={() => onNotify("2 more orders to unlock your bonus")}> 
-        <div className="gift-icon"><Gift size={22} /></div>
-        <div className="incentive-copy">
-          <span>EVENING QUEST</span>
-          <strong>Earn ₹120 extra</strong>
-          <small>Complete 2 more orders before 10 PM</small>
-          <div className="progress-track"><i /></div>
-        </div>
+      <button className="sushi-banner sushi-banner--reward" onClick={() => onNotify("Complete 2 more orders to unlock ₹120")}>
+        <span className="banner-icon"><Gift size={21} /></span>
+        <span><strong>Earn ₹120 extra tonight</strong><small>Complete 2 more orders before 10 PM</small></span>
         <ChevronRight size={19} />
       </button>
 
-      <div className="quick-actions">
-        <h3>Quick actions</h3>
-        <div className="quick-grid">
-          <button onClick={() => onNotify("Availability settings opened")}>
-            <span><Clock3 size={20} /></span>
-            <strong>Set availability</strong>
-            <small>Plan your shift</small>
-          </button>
-          <button onClick={() => onNotify("Safety centre opened")}>
-            <span><ShieldCheck size={20} /></span>
-            <strong>Safety centre</strong>
-            <small>Help on the road</small>
-          </button>
-        </div>
-      </div>
+      <section className="home-links sushi-card">
+        <button onClick={() => onNotify("Safety centre opened")}><ShieldCheck size={20} /><span><strong>Safety centre</strong><small>Emergency help and insurance</small></span><ChevronRight size={19} /></button>
+        <button onClick={() => onNotify("Availability settings opened")}><Clock3 size={20} /><span><strong>Set availability</strong><small>Choose your working hours</small></span><ChevronRight size={19} /></button>
+      </section>
     </div>
   );
 }
 
-function EarningsView() {
-  const bars = [44, 68, 52, 88, 74, 96, 62];
+function EarningsScreen() {
+  const bars = [42, 64, 52, 74, 68, 92, 58];
   const days = ["M", "T", "W", "T", "F", "S", "S"];
-
   return (
-    <div className="view-stack section-view">
-      <div className="section-heading">
-        <span><BadgeIndianRupee size={20} /></span>
-        <div><small>WEEKLY SUMMARY</small><h2>Your earnings</h2></div>
-      </div>
-      <section className="earnings-hero">
-        <p>This week</p>
-        <h3>₹4,860</h3>
-        <span>↑ 12% from last week</span>
-        <div className="chart" aria-label="Earnings chart for this week">
+    <div className="screen-stack">
+      <div className="section-title"><div><h1>Earnings</h1><p>5–11 August</p></div></div>
+      <section className="sushi-card earnings-card">
+        <small>This week</small>
+        <h2>₹4,860</h2>
+        <p>₹522 more than last week</p>
+        <div className="earnings-chart" aria-label="Weekly earnings chart">
           {bars.map((height, index) => (
-            <div className="bar-column" key={`${days[index]}-${index}`}>
-              <i style={{ height: `${height}%` }} className={index === 5 ? "peak" : ""} />
-              <small>{days[index]}</small>
-            </div>
+            <div key={`${days[index]}-${index}`}><span><i style={{ height: `${height}%` }} className={index === 5 ? "highlight" : ""} /></span><small>{days[index]}</small></div>
           ))}
         </div>
       </section>
-      <section className="stats-grid">
-        <div><IndianRupee size={20} /><small>Order pay</small><strong>₹3,720</strong></div>
-        <div><Gift size={20} /><small>Incentives</small><strong>₹940</strong></div>
-        <div><Star size={20} /><small>Tips</small><strong>₹200</strong></div>
-        <div><ReceiptText size={20} /><small>Orders</small><strong>68</strong></div>
+      <div className="earning-breakdown">
+        <div className="sushi-card"><IndianRupee size={19} /><small>Order pay</small><strong>₹3,720</strong></div>
+        <div className="sushi-card"><Gift size={19} /><small>Incentives</small><strong>₹940</strong></div>
+        <div className="sushi-card"><Star size={19} /><small>Tips</small><strong>₹200</strong></div>
+        <div className="sushi-card"><ReceiptText size={19} /><small>Orders</small><strong>68</strong></div>
+      </div>
+      <section className="home-links sushi-card">
+        <button><Wallet size={20} /><span><strong>Payment history</strong><small>View payouts and withdrawals</small></span><ChevronRight size={19} /></button>
+        <button><CircleAlert size={20} /><span><strong>Earnings help</strong><small>Report a payment issue</small></span><ChevronRight size={19} /></button>
       </section>
-      <button className="list-link"><span><WalletCards size={20} /> Payment history</span><ChevronRight size={19} /></button>
-      <button className="list-link"><span><HelpCircle size={20} /> Earnings help</span><ChevronRight size={19} /></button>
     </div>
   );
 }
 
-function HistoryView() {
+function HistoryScreen() {
   const orders = [
-    { time: "7:48 PM", place: "Meghana Foods", area: "Koramangala", amount: "₹58" },
-    { time: "6:55 PM", place: "Truffles", area: "Indiranagar", amount: "₹71" },
-    { time: "5:32 PM", place: "A2B Veg", area: "Domlur", amount: "₹49" },
-    { time: "4:18 PM", place: "Leon Grill", area: "MG Road", amount: "₹64" },
+    { time: "7:48 PM", place: "Meghana Foods", area: "Koramangala", pay: "₹58" },
+    { time: "6:55 PM", place: "Truffles", area: "Indiranagar", pay: "₹71" },
+    { time: "5:32 PM", place: "A2B Veg", area: "Domlur", pay: "₹49" },
+    { time: "4:18 PM", place: "Leon Grill", area: "MG Road", pay: "₹64" },
   ];
   return (
-    <div className="view-stack section-view">
-      <div className="section-heading">
-        <span><History size={20} /></span>
-        <div><small>SUNDAY, 9 AUG</small><h2>Order history</h2></div>
-      </div>
-      <div className="history-summary">
+    <div className="screen-stack">
+      <div className="section-title"><div><h1>Order history</h1><p>Sunday, 9 August</p></div></div>
+      <div className="history-summary sushi-card">
         <div><strong>12</strong><small>Completed</small></div>
-        <div><strong>6h 24m</strong><small>Online time</small></div>
+        <div><strong>6h 24m</strong><small>Online</small></div>
         <div><strong>₹842</strong><small>Earned</small></div>
       </div>
-      <section className="history-list">
+      <section className="order-history sushi-card">
         {orders.map((order, index) => (
           <article key={order.time}>
-            <span className="store-icon"><Store size={19} /></span>
-            <div><small>{order.time} • Order #{4809 - index * 7}</small><strong>{order.place}</strong><p>Delivered to {order.area}</p></div>
-            <b>{order.amount}</b>
+            <span className="row-icon"><Store size={19} /></span>
+            <div><small>{order.time} • #{4809 - index * 7}</small><strong>{order.place}</strong><p>Delivered to {order.area}</p></div>
+            <b>{order.pay}</b>
           </article>
         ))}
       </section>
@@ -403,37 +329,32 @@ function HistoryView() {
   );
 }
 
-function SupportView({ onNotify }: { onNotify: (message: string) => void }) {
+function SupportScreen({ onNotify }: { onNotify: (message: string) => void }) {
   const items = [
-    { icon: ReceiptText, title: "Current order issue", copy: "Pickup, customer or delivery help" },
-    { icon: IndianRupee, title: "Payments & earnings", copy: "Payouts, incentives and tips" },
-    { icon: UserRound, title: "Profile & account", copy: "Documents and account settings" },
-    { icon: Compass, title: "Vehicle & app help", copy: "Navigation or technical support" },
+    { icon: ReceiptText, title: "Current order", copy: "Pickup, customer or delivery issue" },
+    { icon: IndianRupee, title: "Payments and earnings", copy: "Payouts, incentives and tips" },
+    { icon: UserRound, title: "Profile and account", copy: "Documents and account settings" },
+    { icon: ShieldCheck, title: "Safety centre", copy: "SOS, insurance and emergency help" },
   ];
   return (
-    <div className="view-stack section-view">
-      <div className="section-heading">
-        <span><Headphones size={20} /></span>
-        <div><small>WE’RE HERE TO HELP</small><h2>Partner support</h2></div>
-      </div>
-      <button className="urgent-help" onClick={() => onNotify("Connecting you to support…")}>
-        <span><MessageCircle size={22} /></span>
-        <div><strong>Need help with this order?</strong><small>Get priority support for order #4821</small></div>
-        <ChevronRight size={20} />
+    <div className="screen-stack">
+      <div className="section-title"><div><h1>Partner support</h1><p>Help is available 24×7</p></div></div>
+      <button className="sushi-banner sushi-banner--support" onClick={() => onNotify("Connecting to priority support")}>
+        <span className="banner-icon"><MessageCircle size={21} /></span>
+        <span><strong>Need help with order #4821?</strong><small>Get priority support for this delivery</small></span>
+        <ChevronRight size={19} />
       </button>
-      <section className="support-list">
+      <section className="home-links sushi-card">
         {items.map((item) => {
           const Icon = item.icon;
           return (
             <button key={item.title} onClick={() => onNotify(`${item.title} opened`)}>
-              <span><Icon size={20} /></span>
-              <div><strong>{item.title}</strong><small>{item.copy}</small></div>
-              <ChevronRight size={19} />
+              <Icon size={20} /><span><strong>{item.title}</strong><small>{item.copy}</small></span><ChevronRight size={19} />
             </button>
           );
         })}
       </section>
-      <div className="safety-note"><ShieldCheck size={20} /><p><strong>Emergency on the road?</strong><small>Use the SOS option in Safety centre.</small></p></div>
+      <div className="emergency-note"><ShieldCheck size={20} /><span><strong>Emergency on the road?</strong><small>Open Safety centre and use SOS.</small></span></div>
     </div>
   );
 }
