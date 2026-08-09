@@ -386,112 +386,73 @@
   background: white;
 }
 
-.talkArea {
-  display: grid;
-  place-items: center;
-  margin-top: 24px;
-}
-
-.talkButton {
-  position: relative;
-  display: grid;
-  place-items: center;
-  width: 128px;
-  height: 128px;
-  padding: 16px;
-  border: 6px solid white;
-  border-radius: 50%;
-  color: white;
-  background: linear-gradient(145deg, #ef4652, var(--sushi-red-600));
-  box-shadow: 0 0 0 1px var(--sushi-red-100), 0 14px 30px rgba(137, 24, 33, 0.24);
-  touch-action: none;
-  cursor: pointer;
-}
-
-.talkButton strong,
-.talkButton small {
-  display: block;
-}
-
-.talkButton strong {
-  margin-top: 5px;
-  font-size: 11px;
-}
-
-.talkButton small {
-  margin-top: 2px;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 8px;
-}
-
-.talkButton.recording {
-  transform: scale(0.96);
-  box-shadow: 0 0 0 7px rgba(226, 55, 68, 0.18), 0 12px 24px rgba(137, 24, 33, 0.22);
-  animation: callback-talk-pulse 1.1s ease-in-out infinite;
-}
-
-.modeToggle {
+.liveCallControls {
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 12px;
-  width: min(100%, 330px);
-  margin: 14px auto 0;
-  color: var(--sushi-grey-500);
+  justify-content: center;
+  gap: 28px;
+  margin-top: 26px;
+}
+
+.micControl,
+.hangupControl {
+  display: grid;
+  place-items: center;
+  gap: 7px;
+  width: 78px;
+  height: 78px;
+  border-radius: 50%;
   font-size: 9px;
-  font-weight: 600;
-}
-
-.modeToggle button {
-  padding: 5px 0;
-  border: 0;
-  color: var(--sushi-red-500);
-  background: transparent;
-  font: inherit;
-  cursor: pointer;
-}
-
-.modeToggle button:disabled {
-  opacity: 0.45;
-  cursor: not-allowed;
-}
-
-.translationPreview {
-  width: min(100%, 520px);
-  margin-top: 24px;
-  overflow: hidden;
-  border: 1px solid var(--sushi-grey-200);
-  border-radius: 14px;
-  text-align: left;
-}
-
-.translationPreview div {
-  padding: 13px 16px;
-}
-
-.translationPreview div + div {
-  border-top: 1px solid var(--sushi-red-100);
-  background: var(--sushi-red-050);
-}
-
-.translationPreview small,
-.translationPreview p {
-  display: block;
-  margin: 0;
-}
-
-.translationPreview small {
-  color: var(--sushi-grey-500);
-  font-size: 8px;
   font-weight: 700;
-  letter-spacing: 0.45px;
-  text-transform: uppercase;
+  cursor: pointer;
+  transition: transform 150ms ease, box-shadow 150ms ease, background 150ms ease;
 }
 
-.translationPreview p {
-  margin-top: 5px;
-  font-size: 11px;
-  line-height: 17px;
+.micControl {
+  border: 1px solid var(--sushi-grey-200);
+  color: var(--sushi-peppercorn);
+  background: white;
+  box-shadow: 0 10px 24px rgba(45, 45, 45, 0.1);
+}
+
+.micControl.muted {
+  color: #76520e;
+  background: var(--sushi-amber-050);
+}
+
+.hangupControl {
+  border: 1px solid var(--sushi-red-600);
+  color: white;
+  background: var(--sushi-red-500);
+  box-shadow: 0 10px 24px rgba(137, 24, 33, 0.2);
+}
+
+.micControl:hover,
+.hangupControl:hover {
+  transform: translateY(-2px);
+}
+
+.micControl:active,
+.hangupControl:active {
+  transform: scale(0.96);
+}
+
+.micControl:disabled {
+  opacity: 0.48;
+  cursor: not-allowed;
+  transform: none;
+}
+
+.secondaryAction {
+  margin-top: 14px;
+  padding: 8px 12px;
+  border: 1px solid var(--sushi-grey-200);
+  border-radius: 999px;
+  color: var(--sushi-red-500);
+  background: white;
+  font-size: 9px;
+  font-weight: 650;
+  cursor: pointer;
 }
 
 .hint {
@@ -606,63 +567,16 @@
   background: var(--sushi-green-500);
 }
 
-.riderTalk {
-  display: grid;
-  place-items: center;
-  width: 144px;
-  height: 144px;
-  margin: 24px auto 0;
-  border: 6px solid white;
-  border-radius: 50%;
-  color: white;
-  background: linear-gradient(145deg, #33815a, #216442);
-  box-shadow: 0 0 0 1px rgba(38, 126, 82, 0.25), 0 14px 30px rgba(31, 104, 67, 0.22);
-  touch-action: none;
-}
-
-.riderTalk strong,
-.riderTalk small {
-  display: block;
-}
-
-.riderTalk.recording {
-  transform: scale(0.96);
-  box-shadow: 0 0 0 8px rgba(38, 126, 82, 0.16), 0 12px 26px rgba(31, 104, 67, 0.24);
-  animation: callback-talk-pulse 1.1s ease-in-out infinite;
-}
-
-@keyframes callback-talk-pulse {
-  0%,
-  100% {
-    filter: saturate(1);
-  }
-  50% {
-    filter: saturate(1.22) brightness(1.04);
-  }
-}
-
-.riderTalk strong {
-  margin-top: 5px;
-  font-size: 12px;
-}
-
-.riderTalk small {
-  margin-top: 2px;
-  color: rgba(255, 255, 255, 0.78);
-  font-size: 8px;
-}
-
-.riderEnd {
-  display: inline-flex;
+.riderCallStatus {
+  display: flex;
   align-items: center;
-  gap: 7px;
+  justify-content: center;
+  gap: 9px;
+  min-height: 38px;
   margin-top: 20px;
-  padding: 9px 13px;
-  border: 1px solid var(--sushi-grey-200);
-  border-radius: 999px;
-  color: var(--sushi-red-500);
-  background: white;
-  font-size: 9px;
+  color: var(--sushi-green-500);
+  font-size: 10px;
+  line-height: 15px;
   font-weight: 650;
 }
 
@@ -712,9 +626,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .callAvatar::after,
-  .talkButton.recording,
-  .riderTalk.recording {
+  .callAvatar::after {
     animation: none !important;
   }
 }

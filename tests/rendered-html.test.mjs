@@ -81,7 +81,7 @@ test("serves the delivery partner interface at the root route", { timeout: 30_00
   assert.doesNotMatch(html, /codex-preview/i);
 });
 
-test("serves the translated support callback console", { timeout: 30_000 }, async (t) => {
+test("serves the live support callback console", { timeout: 30_000 }, async (t) => {
   const port = await availablePort();
   const processExited = { value: false, output: "" };
   const nextProcess = spawn(
@@ -114,9 +114,10 @@ test("serves the translated support callback console", { timeout: 30_000 }, asyn
   );
   assert.equal(response.status, 200);
   const html = await response.text();
-  assert.match(html, /Translated callback console/i);
+  assert.match(html, /Live callback console/i);
   assert.match(html, /Callback requests/i);
   assert.match(html, /Call Ram/i);
-  assert.match(html, /Support speaks English/i);
-  assert.match(html, /Ram hears Hindi/i);
+  assert.match(html, /LiveKit audio room/i);
+  assert.match(html, /Both people can speak/i);
+  assert.doesNotMatch(html, /Translated callback console/i);
 });

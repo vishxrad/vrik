@@ -30,9 +30,7 @@ export type CallbackDemoEvent =
   | { type: "ring"; at: number; callbackId?: string }
   | { type: "accept"; at: number; callbackId?: string }
   | { type: "decline"; at: number; callbackId?: string }
-  | { type: "end"; at: number; callbackId?: string }
-  | { type: "turn-start"; at: number; speaker: "rider" | "support" }
-  | { type: "turn-end"; at: number; speaker: "rider" | "support" };
+  | { type: "end"; at: number; callbackId?: string };
 
 export const CALLBACK_DEMO_CHANNEL = "vrik-callback-demo-v1";
 

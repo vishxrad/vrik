@@ -1,14 +1,13 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import {
-  AudioLines,
-  ArrowRight,
   CircleAlert,
   Headphones,
-  Languages,
   Mic,
+  MicOff,
   Phone,
+  PhoneCall,
   PhoneOff,
   Radio,
   ShieldCheck,
@@ -16,11 +15,7 @@ import {
 } from "lucide-react";
 
 import styles from "@/components/callback/callback-ui.module.css";
-import {
-  usePressToTalk,
-  type PressToTalkMode,
-} from "@/components/callback/use-press-to-talk";
-import { useTranslatedVoipCall } from "@/components/callback/use-translated-voip-call";
+import { useLivekitAudioCall } from "@/components/callback/use-livekit-audio-call";
 import {
   openCallbackDemoChannel,
   publishCallbackDemoEvent,
@@ -31,18 +26,15 @@ import {
   type CallbackDemoEvent,
 } from "@/lib/callback-demo";
 
-type ConsoleState = "ready" | "ringing" | "connected" | "recording" | "ended";
+type ConsoleState = "ready" | "ringing" | "connected" | "ended";
 
 export function SupportCallbackConsole() {
   const [state, setState] = useState<ConsoleState>("ready");
   const [notice, setNotice] = useState("Ready to call Ram in the partner app");
   const [callback, setCallback] = useState<CallbackApiRecord | null>(null);
   const [databaseReady, setDatabaseReady] = useState<boolean | null>(null);
-  const [interactionMode, setInteractionMode] =
-    useState<PressToTalkMode>("hold");
-  const recordingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const fallbackRecordingRef = useRef(false);
-  const voip = useTranslatedVoipCall("support");
+  const call = useLivekitAudioCall("support");
+  const disconnectCall = call.disconnect;
 
   const syncCallback = useCallback(async () => {
     try {
@@ -60,7 +52,7 @@ export function SupportCallbackConsole() {
       }
       if (body.callback?.status === "connected") {
         setState("connected");
-        setNotice("Connected · Ram hears the Hindi translation");
+        setNotice("Ram answered the callback");
       }
     } catch {
       setDatabaseReady(false);
@@ -71,7 +63,7 @@ export function SupportCallbackConsole() {
     const channel = openCallbackDemoChannel((event: CallbackDemoEvent) => {
       if (event.type === "accept") {
         setState("connected");
-        setNotice("Connected · Ram hears the Hindi translation");
+        setNotice("Ram answered the callback");
       }
       if (event.type === "decline") {
         setState("ready");
@@ -80,10 +72,11 @@ export function SupportCallbackConsole() {
       if (event.type === "end") {
         setState("ended");
         setNotice("Callback ended");
+        void disconnectCall();
       }
     });
     return () => channel?.close();
-  }, []);
+  }, [disconnectCall]);
 
   useEffect(() => {
     const initial = window.setTimeout(() => void syncCallback(), 0);
@@ -94,85 +87,49 @@ export function SupportCallbackConsole() {
     };
   }, [syncCallback]);
 
-  useEffect(() => () => {
-    if (recordingTimer.current) clearTimeout(recordingTimer.current);
-  }, []);
-
   async function callRam() {
     setState("ringing");
     setNotice("Ringing Ram’s partner app…");
     let nextCallback = callback;
 
-    if (databaseReady !== false) {
-      try {
-        if (!nextCallback || !["requested", "ringing", "connected"].includes(nextCallback.status)) {
-          const created = await fetch("/api/support/callbacks/demo", { method: "POST" });
-          if (!created.ok) throw new Error("create failed");
-          nextCallback = ((await created.json()) as { callback: CallbackApiRecord }).callback;
-        }
-
-        if (nextCallback.status === "requested") {
-          const ringing = await fetch(`/api/support/callbacks/${nextCallback.id}/ring`, {
-            method: "POST",
-          });
-          if (!ringing.ok) throw new Error("ring failed");
-          nextCallback = ((await ringing.json()) as { callback: CallbackApiRecord }).callback;
-        }
-        setDatabaseReady(true);
-        setCallback(nextCallback);
-        const connected = await voip.connect(nextCallback.id);
-        if (!connected) {
-          setNotice("Ringing in preview mode · add LiveKit credentials for cross-device VoIP");
-        }
-      } catch {
-        setDatabaseReady(false);
-        setNotice("Database unavailable · using the same-browser preview");
+    try {
+      if (!nextCallback || !["requested", "ringing", "connected"].includes(nextCallback.status)) {
+        const created = await fetch("/api/support/callbacks/demo", { method: "POST" });
+        if (!created.ok) throw new Error("The callback could not be created.");
+        nextCallback = ((await created.json()) as { callback: CallbackApiRecord }).callback;
       }
-    }
 
-    const delivered = publishCallbackDemoEvent({
-      type: "ring",
-      at: Date.now(),
-      callbackId: nextCallback?.id,
-    });
-    if (!delivered) {
-      setNotice("Open this page and the rider app in a browser that supports tab messaging.");
+      if (nextCallback.status === "requested") {
+        const ringing = await fetch(`/api/support/callbacks/${nextCallback.id}/ring`, {
+          method: "POST",
+        });
+        if (!ringing.ok) throw new Error("Ram’s app could not be rung.");
+        nextCallback = ((await ringing.json()) as { callback: CallbackApiRecord }).callback;
+      }
+
+      setDatabaseReady(true);
+      setCallback(nextCallback);
+      const joined = await call.connect(nextCallback.id);
+      if (!joined) setNotice("The audio room could not connect. Retry or cancel the callback.");
+
+      publishCallbackDemoEvent({
+        type: "ring",
+        at: Date.now(),
+        callbackId: nextCallback.id,
+      });
+    } catch (error) {
+      setDatabaseReady(false);
+      setState("ready");
+      setNotice(error instanceof Error ? error.message : "The callback could not start.");
     }
   }
 
-  function finishFallbackTurn() {
-    if (!fallbackRecordingRef.current) return;
-    fallbackRecordingRef.current = false;
-    if (recordingTimer.current) clearTimeout(recordingTimer.current);
-    recordingTimer.current = null;
-    setState("connected");
-    setNotice("Hindi audio delivered to Ram");
-    publishCallbackDemoEvent({ type: "turn-end", speaker: "support", at: Date.now() });
-  }
-
-  function startSupportTurn() {
-    if (state !== "connected") return;
-    if (voip.connected) {
-      void voip.startRecording();
-      return;
-    }
-    fallbackRecordingRef.current = true;
-    setState("recording");
-    setNotice("Listening in English…");
-    publishCallbackDemoEvent({ type: "turn-start", speaker: "support", at: Date.now() });
-    recordingTimer.current = setTimeout(finishFallbackTurn, 15_000);
-  }
-
-  function stopSupportTurn() {
-    if (voip.connected) {
-      voip.stopRecording();
-      return;
-    }
-    finishFallbackTurn();
+  async function reconnectAudio() {
+    if (!callback) return;
+    await call.connect(callback.id);
   }
 
   async function endCall() {
-    if (recordingTimer.current) clearTimeout(recordingTimer.current);
     if (callback) {
       await fetch(`/api/support/callbacks/${callback.id}/end`, {
         method: "POST",
@@ -183,35 +140,31 @@ export function SupportCallbackConsole() {
     setState("ended");
     setNotice("Callback ended");
     setCallback(null);
-    await voip.disconnect();
+    await call.disconnect();
     publishCallbackDemoEvent({ type: "end", at: Date.now(), callbackId: callback?.id });
   }
 
-  const active = state === "connected" || state === "recording";
-  const voipBusy = [
-    "transcribing",
-    "translating",
-    "synthesizing",
-    "sending",
-    "receiving",
-  ].includes(voip.phase);
-  const shownTurn = voip.lastTurn;
-  const supportRecording = voip.phase === "recording" || state === "recording";
-  const talkDisabled = voipBusy || (voip.connected && !voip.peerConnected);
-  const pressToTalk = usePressToTalk({
-    mode: interactionMode,
-    disabled: talkDisabled,
-    recording: supportRecording,
-    start: startSupportTurn,
-    stop: stopSupportTurn,
-  });
+  const active = state === "connected";
+  const statusText =
+    call.errorMessage ||
+    (call.phase === "connecting"
+      ? "Joining the LiveKit audio room…"
+      : call.connected && !call.peerConnected
+        ? "Audio ready · waiting for Ram to answer"
+        : call.peerSpeaking
+          ? "Ram is speaking"
+          : call.connected && call.muted
+            ? "Connected · your microphone is muted"
+            : call.connected
+              ? "Connected · your microphone is on"
+              : notice);
 
   return (
     <main className={styles.operatorPage}>
       <header className={styles.operatorHeader}>
         <div className={styles.brand}>
           <span className={styles.brandMark}><Headphones size={20} /></span>
-          <div><strong>Zomato Partner Support</strong><small>Translated callback console</small></div>
+          <div><strong>Zomato Partner Support</strong><small>Live callback console</small></div>
         </div>
         <span className={styles.agentStatus}>Support online</span>
       </header>
@@ -244,7 +197,7 @@ export function SupportCallbackConsole() {
         <section className={styles.callPanel} aria-labelledby="callback-title">
           <header className={styles.callHeader}>
             <div className={styles.languageBridge}>
-              <span>Support speaks English</span><ArrowRight size={14} /><span>Ram hears Hindi</span>
+              <PhoneCall size={15} /><span>LiveKit audio room</span><span>Both people can speak</span>
             </div>
             <span className={styles.demoBadge}>Foreground app demo</span>
           </header>
@@ -252,23 +205,12 @@ export function SupportCallbackConsole() {
           <div className={styles.callBody}>
             <span className={`${styles.callAvatar} ${styles[state] ?? ""}`}>{DEMO_CALLBACK.rider.initials}</span>
             <h2 id="callback-title">{DEMO_CALLBACK.rider.name}</h2>
-            <p>Call the fixed demo rider inside the partner app. Spoken turns are translated after each person releases the button.</p>
+            <p>A normal live audio call inside the partner app. There is no translation and no hold-to-speak step.</p>
 
             <div className={`${styles.statusLine} ${active ? styles.connected : ""}`} role="status" aria-live="polite">
-              {state === "ringing" ? <Radio size={15} /> : active ? <Volume2 size={15} /> : <ShieldCheck size={15} />}
+              {state === "ringing" ? <Radio size={15} /> : call.peerSpeaking ? <Volume2 size={15} /> : <ShieldCheck size={15} />}
               <span>
-                {voip.errorMessage ||
-                  (voip.connected && !voip.peerConnected
-                    ? "VoIP ready · waiting for Ram to answer"
-                    : voip.phase === "transcribing"
-                      ? "Understanding your English…"
-                      : voip.phase === "translating"
-                        ? "Translating to Hindi…"
-                        : voip.phase === "synthesizing"
-                          ? "Creating Hindi speech…"
-                          : voip.phase === "sending"
-                            ? "Sending Hindi audio to Ram…"
-                            : notice)}
+                {statusText}
                 {databaseReady === true ? " · saved in Postgres" : ""}
               </span>
             </div>
@@ -287,47 +229,36 @@ export function SupportCallbackConsole() {
 
             {active && (
               <>
-                <div className={styles.talkArea}>
-                  <button
-                    className={`${styles.talkButton} ${voip.phase === "recording" || state === "recording" ? styles.recording : ""}`}
-                    {...pressToTalk}
-                    disabled={talkDisabled}
-                    aria-pressed={supportRecording}
-                  >
-                    <span>{supportRecording ? <AudioLines size={31} /> : <Mic size={31} />}</span>
-                    <strong>{supportRecording ? (interactionMode === "hold" ? "Release to send" : "Tap to send") : voipBusy ? "Working…" : interactionMode === "hold" ? "Hold to speak" : "Tap to speak"}</strong>
-                    <small>{voip.phase === "requesting-permission" ? "Opening microphone…" : supportRecording ? "Listening in English" : "Speak English"}</small>
-                  </button>
-                </div>
-                <div className={styles.modeToggle}>
-                  <span>{interactionMode === "hold" ? "Press-and-hold mode" : "Tap mode"}</span>
+                <div className={styles.liveCallControls}>
                   <button
                     type="button"
-                    disabled={
-                      voipBusy ||
-                      supportRecording ||
-                      voip.phase === "requesting-permission"
-                    }
-                    onClick={() =>
-                      setInteractionMode((current) =>
-                        current === "hold" ? "tap" : "hold",
-                      )
-                    }
+                    className={`${styles.micControl} ${call.muted ? styles.muted : ""}`}
+                    onClick={() => void call.toggleMuted()}
+                    disabled={!call.connected || call.changingMicrophone}
+                    aria-pressed={call.muted}
                   >
-                    {interactionMode === "hold" ? "Use tap instead" : "Use press and hold"}
+                    {call.muted ? <MicOff size={25} /> : <Mic size={25} />}
+                    <span>{call.muted ? "Unmute" : "Mute"}</span>
+                  </button>
+                  <button className={styles.hangupControl} onClick={endCall}>
+                    <PhoneOff size={25} /><span>End</span>
                   </button>
                 </div>
-                <div className={styles.translationPreview} aria-label="Example translated turn">
-                  <div><small>{shownTurn?.speaker === "rider" ? "Ram said · Hindi" : "You said · English"}</small><p>{shownTurn?.sourceText || "I can guide you to the customer entrance. Are you near Tower C?"}</p></div>
-                  <div><small>{shownTurn?.speaker === "rider" ? "You hear · English" : "Ram hears · Hindi"}</small><p>{shownTurn?.translatedText || "मैं आपको ग्राहक के प्रवेश द्वार तक पहुँचा सकता हूँ। क्या आप टावर सी के पास हैं?"}</p></div>
-                </div>
-                <button className={styles.endAction} onClick={endCall}>
-                  <PhoneOff size={17} /> End callback
-                </button>
+
+                {!call.connected && callback && (
+                  <button className={styles.secondaryAction} onClick={reconnectAudio}>
+                    Reconnect audio
+                  </button>
+                )}
+                {call.audioPlaybackBlocked && (
+                  <button className={styles.secondaryAction} onClick={() => void call.resumeAudio()}>
+                    Enable speaker audio
+                  </button>
+                )}
               </>
             )}
 
-            <div className={styles.hint}><Languages size={14} /> English ↔ Hindi · translated one turn at a time</div>
+            <div className={styles.hint}><PhoneCall size={14} /> Live browser audio · no translation or recording</div>
           </div>
         </section>
       </div>
