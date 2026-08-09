@@ -19,7 +19,6 @@ import {
 } from "react";
 
 type LanguageCode = "ta-IN" | "kn-IN" | "hi-IN" | "en-IN";
-type OtherLanguageCode = Exclude<LanguageCode, "hi-IN">;
 type Direction = "rider" | "other";
 type InteractionMode = "hold" | "tap";
 type Phase =
@@ -51,9 +50,13 @@ type ApiErrorPayload = {
   };
 };
 
-const RIDER_LANGUAGE: LanguageCode = "hi-IN";
-const LANGUAGE_STORAGE_KEY = "local-translation.counterpart-language";
+const DEFAULT_RIDER_LANGUAGE: LanguageCode = "hi-IN";
+const DEFAULT_OTHER_LANGUAGE: LanguageCode = "kn-IN";
+const RIDER_LANGUAGE_STORAGE_KEY = "local-translation.rider-language";
+const OTHER_LANGUAGE_STORAGE_KEY = "local-translation.counterpart-language";
 const MAX_RECORDING_MS = 15_000;
+const SILENT_WAV_DATA_URL =
+  "data:audio/wav;base64,UklGRigAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQQAAACAgICA";
 
 const languageNames: Record<LanguageCode, string> = {
   "ta-IN": "Tamil",
@@ -62,9 +65,10 @@ const languageNames: Record<LanguageCode, string> = {
   "en-IN": "English",
 };
 
-const otherLanguages: Array<{ code: OtherLanguageCode; label: string; native: string }> = [
+const languages: Array<{ code: LanguageCode; label: string; native: string }> = [
   { code: "ta-IN", label: "Tamil", native: "தமிழ்" },
   { code: "kn-IN", label: "Kannada", native: "ಕನ್ನಡ" },
+  { code: "hi-IN", label: "Hindi", native: "हिंदी" },
   { code: "en-IN", label: "English", native: "English" },
 ];
 
@@ -79,8 +83,16 @@ const phaseLabels: Record<Phase, string> = {
   error: "Translation stopped",
 };
 
-function isOtherLanguage(value: string | null): value is OtherLanguageCode {
-  return otherLanguages.some((language) => language.code === value);
+function isLanguageCode(value: string | null): value is LanguageCode {
+  return languages.some((language) => language.code === value);
+}
+
+function differentLanguage(
+  excludedLanguage: LanguageCode,
+  preferredLanguage: LanguageCode,
+) {
+  if (preferredLanguage !== excludedLanguage) return preferredLanguage;
+  return languages.find((language) => language.code !== excludedLanguage)!.code;
 }
 
 function preferredRecordingMimeType() {
@@ -121,8 +133,10 @@ async function jsonResponse<T>(response: Response) {
 
 export function LocalTranslation() {
   const [open, setOpen] = useState(false);
+  const [riderLanguage, setRiderLanguage] =
+    useState<LanguageCode>(DEFAULT_RIDER_LANGUAGE);
   const [otherLanguage, setOtherLanguage] =
-    useState<OtherLanguageCode>("kn-IN");
+    useState<LanguageCode>(DEFAULT_OTHER_LANGUAGE);
   const [interactionMode, setInteractionMode] =
     useState<InteractionMode>("hold");
   const [selectedDirection, setSelectedDirection] =
@@ -145,7 +159,8 @@ export function LocalTranslation() {
   const captureSequenceRef = useRef(0);
   const activeTurnRef = useRef<{
     direction: Direction;
-    otherLanguage: OtherLanguageCode;
+    riderLanguage: LanguageCode;
+    otherLanguage: LanguageCode;
   } | null>(null);
   const requestControllerRef = useRef<AbortController | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
@@ -161,6 +176,16 @@ export function LocalTranslation() {
         "transcribing",
         "translating",
         "speaking",
+      ].includes(phase),
+    [phase],
+  );
+  const controlsLocked = useMemo(
+    () =>
+      [
+        "requesting-permission",
+        "recording",
+        "transcribing",
+        "translating",
       ].includes(phase),
     [phase],
   );
@@ -193,8 +218,22 @@ export function LocalTranslation() {
   }, []);
 
   function openSheet() {
-    const savedLanguage = window.localStorage.getItem(LANGUAGE_STORAGE_KEY);
-    if (isOtherLanguage(savedLanguage)) setOtherLanguage(savedLanguage);
+    const savedRiderLanguage = window.localStorage.getItem(
+      RIDER_LANGUAGE_STORAGE_KEY,
+    );
+    const savedOtherLanguage = window.localStorage.getItem(
+      OTHER_LANGUAGE_STORAGE_KEY,
+    );
+    const nextRiderLanguage = isLanguageCode(savedRiderLanguage)
+      ? savedRiderLanguage
+      : DEFAULT_RIDER_LANGUAGE;
+    const nextOtherLanguage =
+      isLanguageCode(savedOtherLanguage) &&
+      savedOtherLanguage !== nextRiderLanguage
+        ? savedOtherLanguage
+        : differentLanguage(nextRiderLanguage, DEFAULT_OTHER_LANGUAGE);
+    setRiderLanguage(nextRiderLanguage);
+    setOtherLanguage(nextOtherLanguage);
     setSelectedDirection("rider");
     setOpen(true);
   }
@@ -210,17 +249,56 @@ export function LocalTranslation() {
     streamRef.current = null;
   }
 
-  function stopPlayback({ revoke = false } = {}) {
-    if (audioRef.current) {
-      audioRef.current.pause();
-      audioRef.current.currentTime = 0;
-      audioRef.current = null;
+  function playbackElement() {
+    if (!audioRef.current) {
+      const audio = new Audio();
+      audio.preload = "auto";
+      audio.setAttribute("playsinline", "");
+      audioRef.current = audio;
     }
-    if (revoke && audioUrlRef.current) {
-      URL.revokeObjectURL(audioUrlRef.current);
+    return audioRef.current;
+  }
+
+  function stopPlayback({ revoke = false } = {}) {
+    const audio = audioRef.current;
+    if (audio) {
+      audio.pause();
+      if (audio.currentSrc) audio.currentTime = 0;
+    }
+    if (revoke) {
+      if (audio) {
+        audio.onended = null;
+        audio.removeAttribute("src");
+        audio.load();
+      }
+      if (audioUrlRef.current) URL.revokeObjectURL(audioUrlRef.current);
       audioUrlRef.current = "";
       setHasAudio(false);
     }
+  }
+
+  function primeAudioPlayback() {
+    const audio = playbackElement();
+    audio.onended = null;
+    audio.src = SILENT_WAV_DATA_URL;
+    audio.load();
+    void audio
+      .play()
+      .then(() => {
+        if (audio.src !== SILENT_WAV_DATA_URL) return;
+        audio.pause();
+        audio.currentTime = 0;
+      })
+      .catch(() => {
+        // The generated clip will still attempt normal autoplay and offer Replay.
+      });
+  }
+
+  function interruptPlayback() {
+    if (phase !== "speaking") return;
+    stopPlayback();
+    setPlaybackNotice("");
+    setPhase(result ? "ready" : "idle");
   }
 
   function stopRecording() {
@@ -248,9 +326,32 @@ export function LocalTranslation() {
     setOpen(false);
   }
 
-  function selectOtherLanguage(code: OtherLanguageCode) {
+  function selectRiderLanguage(code: LanguageCode) {
+    interruptPlayback();
+    setRiderLanguage(code);
+    window.localStorage.setItem(RIDER_LANGUAGE_STORAGE_KEY, code);
+    if (code === otherLanguage) {
+      const replacement = riderLanguage;
+      setOtherLanguage(replacement);
+      window.localStorage.setItem(OTHER_LANGUAGE_STORAGE_KEY, replacement);
+    }
+  }
+
+  function selectOtherLanguage(code: LanguageCode) {
+    interruptPlayback();
     setOtherLanguage(code);
-    window.localStorage.setItem(LANGUAGE_STORAGE_KEY, code);
+    window.localStorage.setItem(OTHER_LANGUAGE_STORAGE_KEY, code);
+    if (code === riderLanguage) {
+      const replacement = otherLanguage;
+      setRiderLanguage(replacement);
+      window.localStorage.setItem(RIDER_LANGUAGE_STORAGE_KEY, replacement);
+    }
+  }
+
+  function selectDirection(direction: Direction) {
+    if (direction === selectedDirection) return;
+    interruptPlayback();
+    setSelectedDirection(direction);
   }
 
   async function processRecording(recording: SavedRecording) {
@@ -324,22 +425,17 @@ export function LocalTranslation() {
 
       const audioUrl = URL.createObjectURL(audioBlob);
       audioUrlRef.current = audioUrl;
-      const audio = new Audio(audioUrl);
-      audioRef.current = audio;
+      const audio = playbackElement();
+      audio.src = audioUrl;
+      audio.load();
       setHasAudio(true);
-      audio.addEventListener(
-        "ended",
-        () => {
-          setPhase("ready");
-        },
-        { once: true },
-      );
+      audio.onended = () => setPhase("ready");
 
       setPhase("speaking");
       try {
         await audio.play();
       } catch {
-        setPlaybackNotice("Tap Replay to hear the translated message.");
+        setPlaybackNotice("Audio is ready. Tap Replay to hear it.");
         setPhase("ready");
       }
     } catch (error) {
@@ -384,6 +480,7 @@ export function LocalTranslation() {
     setPhase("requesting-permission");
     requestControllerRef.current?.abort();
     stopPlayback({ revoke: true });
+    primeAudioPlayback();
 
     try {
       const stream = await navigator.mediaDevices.getUserMedia({
@@ -409,7 +506,7 @@ export function LocalTranslation() {
       const recorder = new MediaRecorder(stream, mimeType ? { mimeType } : undefined);
       recorderRef.current = recorder;
       chunksRef.current = [];
-      activeTurnRef.current = { direction, otherLanguage };
+      activeTurnRef.current = { direction, riderLanguage, otherLanguage };
 
       recorder.addEventListener(
         "start",
@@ -445,9 +542,9 @@ export function LocalTranslation() {
           }
 
           const sourceLanguage =
-            turn.direction === "rider" ? RIDER_LANGUAGE : turn.otherLanguage;
+            turn.direction === "rider" ? turn.riderLanguage : turn.otherLanguage;
           const targetLanguage =
-            turn.direction === "rider" ? turn.otherLanguage : RIDER_LANGUAGE;
+            turn.direction === "rider" ? turn.otherLanguage : turn.riderLanguage;
           void processRecording({ blob, sourceLanguage, targetLanguage });
         },
         { once: true },
@@ -557,7 +654,7 @@ export function LocalTranslation() {
     const disabled =
       busy && phase !== "requesting-permission" && phase !== "recording";
     const title = rider
-      ? `You are speaking ${languageNames[RIDER_LANGUAGE]}`
+      ? `You are speaking ${languageNames[riderLanguage]}`
       : `Other person is speaking ${languageNames[otherLanguage]}`;
     const helper =
       interactionMode === "hold"
@@ -638,23 +735,38 @@ export function LocalTranslation() {
             </header>
 
             <div className="translation-language-settings">
-              <div className="translation-language-row">
+              <label className="translation-language-row">
                 <span>You speak</span>
-                <strong>{languageNames[RIDER_LANGUAGE]}</strong>
-              </div>
+                <select
+                  value={riderLanguage}
+                  disabled={controlsLocked}
+                  aria-label="Your language"
+                  onChange={(event) => {
+                    if (isLanguageCode(event.target.value)) {
+                      selectRiderLanguage(event.target.value);
+                    }
+                  }}
+                >
+                  {languages.map((language) => (
+                    <option key={language.code} value={language.code}>
+                      {language.native} · {language.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <label className="translation-language-row">
                 <span>Other person speaks</span>
                 <select
                   value={otherLanguage}
-                  disabled={busy}
+                  disabled={controlsLocked}
                   aria-label="Other person’s language"
                   onChange={(event) => {
-                    if (isOtherLanguage(event.target.value)) {
+                    if (isLanguageCode(event.target.value)) {
                       selectOtherLanguage(event.target.value);
                     }
                   }}
                 >
-                  {otherLanguages.map((language) => (
+                  {languages.map((language) => (
                     <option key={language.code} value={language.code}>
                       {language.native} · {language.label}
                     </option>
@@ -670,8 +782,8 @@ export function LocalTranslation() {
                   type="button"
                   className={selectedDirection === "rider" ? "selected" : ""}
                   aria-pressed={selectedDirection === "rider"}
-                  disabled={busy}
-                  onClick={() => setSelectedDirection("rider")}
+                  disabled={controlsLocked}
+                  onClick={() => selectDirection("rider")}
                 >
                   <span>Y</span>
                   <strong>You</strong>
@@ -680,8 +792,8 @@ export function LocalTranslation() {
                   type="button"
                   className={selectedDirection === "other" ? "selected" : ""}
                   aria-pressed={selectedDirection === "other"}
-                  disabled={busy}
-                  onClick={() => setSelectedDirection("other")}
+                  disabled={controlsLocked}
+                  onClick={() => selectDirection("other")}
                 >
                   <span>O</span>
                   <strong>Other person</strong>
@@ -693,14 +805,14 @@ export function LocalTranslation() {
               <div className="translation-direction" aria-hidden="true">
                 <span>
                   {selectedDirection === "rider"
-                    ? languageNames[RIDER_LANGUAGE]
+                    ? languageNames[riderLanguage]
                     : languageNames[otherLanguage]}
                 </span>
                 <i>→</i>
                 <span>
                   {selectedDirection === "rider"
                     ? languageNames[otherLanguage]
-                    : languageNames[RIDER_LANGUAGE]}
+                    : languageNames[riderLanguage]}
                 </span>
               </div>
               {recordingButton()}

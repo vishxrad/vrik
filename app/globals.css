@@ -273,7 +273,7 @@ button:focus-visible { outline: 3px solid rgba(226, 55, 68, .24); outline-offset
   height: 64px;
   padding: 0;
   border: 1px solid var(--sushi-red-600);
-  border-radius: 22px 22px 7px 22px;
+  border-radius: 50%;
   color: var(--sushi-feta);
   background: linear-gradient(145deg, #ef4652, var(--sushi-red-600));
   box-shadow: 0 9px 22px rgba(137, 24, 33, .34);
