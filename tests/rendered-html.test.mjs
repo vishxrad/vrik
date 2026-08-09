@@ -77,5 +77,6 @@ test("serves the delivery partner interface at the root route", { timeout: 30_00
   assert.match(html, /Current order/i);
   assert.match(html, /Empire Restaurant/i);
   assert.match(html, /Translate/i);
+  assert.match(html, /AI support/i);
   assert.doesNotMatch(html, /codex-preview/i);
 });

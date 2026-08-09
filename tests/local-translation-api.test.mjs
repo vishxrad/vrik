@@ -428,7 +428,7 @@ test("local translation route handlers", { timeout: 60_000 }, async (t) => {
 
   await t.test("reports a missing server-side API key", async (missingKeyTest) => {
     const noKeyBaseUrl = await startNextServer(missingKeyTest, {
-      SARVAM_API_KEY: undefined,
+      SARVAM_API_KEY: "",
       SARVAM_API_BASE_URL: mock.url,
       SARVAM_API_TIMEOUT_MS: "75",
     });

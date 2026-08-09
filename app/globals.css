@@ -259,6 +259,89 @@ button:focus-visible { outline: 3px solid rgba(226, 55, 68, .24); outline-offset
 .sushi-toast > span { flex: 1; }
 .sushi-toast button { display: grid; place-items: center; padding: var(--space-050); border: 0; color: #cfcfcd; background: transparent; cursor: pointer; }
 
+.support-call-overlay {
+  position: fixed;
+  z-index: 50;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-top: 24px;
+  background: rgba(26, 26, 26, .56);
+  backdrop-filter: blur(3px);
+}
+
+.support-call-sheet {
+  width: min(100%, 480px);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  padding: var(--space-100) var(--space-200) calc(20px + env(safe-area-inset-bottom));
+  border-radius: 24px 24px 0 0;
+  background: var(--sushi-feta);
+  box-shadow: 0 -10px 36px rgba(24, 24, 24, .25);
+}
+
+.support-call-handle { width: 40px; height: 4px; margin: 0 auto var(--space-200); border-radius: 999px; background: var(--sushi-grey-200); }
+.support-call-header { display: grid; grid-template-columns: auto 1fr auto; align-items: start; gap: var(--space-150); }
+.support-call-agent-icon { display: grid; place-items: center; width: 44px; height: 44px; border-radius: 50%; color: var(--sushi-red-500); background: var(--sushi-red-100); }
+.support-call-header > div { min-width: 0; }
+.support-call-header h2, .support-call-header p { margin: 0; }
+.support-call-header h2 { margin-top: 2px; font-size: 20px; line-height: 25px; font-weight: 700; letter-spacing: -.25px; }
+.support-call-header p { margin-top: var(--space-050); color: var(--sushi-grey-500); font-size: 10px; line-height: 15px; }
+.support-call-eyebrow { display: block; color: var(--sushi-red-500); font-size: 9px; line-height: 13px; font-weight: 700; letter-spacing: .55px; text-transform: uppercase; }
+.support-call-header > button { display: grid; place-items: center; width: 36px; height: 36px; padding: 0; border: 1px solid var(--sushi-grey-200); border-radius: 50%; color: var(--sushi-grey-500); background: var(--sushi-feta); cursor: pointer; }
+
+.support-call-orb {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  place-items: center;
+  width: 132px;
+  height: 132px;
+  margin: var(--space-300) auto 0;
+  border: 6px solid var(--sushi-feta);
+  border-radius: 50%;
+  color: var(--sushi-grey-500);
+  background: linear-gradient(145deg, #f5f5f3, #e7e7e4);
+  box-shadow: 0 0 0 1px var(--sushi-grey-200), 0 14px 28px rgba(45,45,45,.13);
+  transition: color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+
+.support-call-orb.connecting { color: var(--sushi-red-500); background: var(--sushi-red-050); box-shadow: 0 0 0 1px var(--sushi-red-100), 0 14px 28px rgba(137,24,33,.15); }
+.support-call-orb.connected, .support-call-orb.listening { color: var(--sushi-feta); background: linear-gradient(145deg, #2c9162, #216442); box-shadow: 0 0 0 1px rgba(38,126,82,.3), 0 14px 28px rgba(31,104,67,.24); }
+.support-call-orb.speaking { color: var(--sushi-feta); background: linear-gradient(145deg, #ef4652, var(--sushi-red-600)); box-shadow: 0 0 0 1px rgba(226,55,68,.3), 0 14px 28px rgba(137,24,33,.26); }
+.support-call-orb.error { color: var(--sushi-red-500); background: var(--sushi-red-050); box-shadow: 0 0 0 1px var(--sushi-red-100), 0 14px 28px rgba(137,24,33,.15); }
+.support-call-orb > span { position: absolute; z-index: -1; inset: -8px; border: 2px solid currentColor; border-radius: 50%; opacity: .25; animation: support-call-ring 1.6s ease-out infinite; }
+.support-call-orb.listening > svg { animation: support-call-breathe .8s ease-in-out infinite alternate; }
+.support-call-orb.speaking > svg { animation: support-call-breathe .55s ease-in-out infinite alternate; }
+.support-call-spinner { animation: translation-spin .85s linear infinite; }
+
+.support-call-status { min-height: 48px; margin-top: var(--space-150); text-align: center; }
+.support-call-status strong, .support-call-status small { display: block; }
+.support-call-status strong { font-size: 14px; line-height: 19px; font-weight: 650; }
+.support-call-status small { margin-top: 2px; color: var(--sushi-grey-500); font-size: 9px; line-height: 13px; }
+
+.support-call-transcript { display: grid; gap: var(--space-075); max-height: 144px; margin-top: var(--space-100); overflow-y: auto; }
+.support-call-transcript p { max-width: 88%; margin: 0; padding: var(--space-100) var(--space-150); border-radius: var(--radius-150); background: var(--sushi-tyrolean); }
+.support-call-transcript p.rider { justify-self: end; background: var(--sushi-red-050); }
+.support-call-transcript small, .support-call-transcript span { display: block; }
+.support-call-transcript small { color: var(--sushi-grey-500); font-size: 8px; line-height: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: .35px; }
+.support-call-transcript span { margin-top: 2px; font-size: 11px; line-height: 16px; }
+
+.support-call-error { margin-top: var(--space-100); padding: var(--space-100) var(--space-150); border-radius: var(--radius-100); color: #8a242c; background: var(--sushi-red-050); font-size: 10px; line-height: 15px; }
+.support-call-start { display: flex; align-items: center; justify-content: center; gap: var(--space-100); width: 100%; min-height: 48px; margin-top: var(--space-150); padding: var(--space-100) var(--space-200); border: 1px solid var(--sushi-red-500); border-radius: var(--radius-100); color: var(--sushi-feta); background: var(--sushi-red-500); font-size: 12px; line-height: 17px; font-weight: 650; cursor: pointer; }
+.support-call-start:hover { background: var(--sushi-red-600); }
+
+.support-call-controls { display: flex; justify-content: center; gap: var(--space-400); margin-top: var(--space-150); }
+.support-call-controls button { display: flex; flex-direction: column; align-items: center; gap: var(--space-075); min-width: 64px; padding: 0; border: 0; color: var(--sushi-grey-500); background: transparent; font-size: 9px; line-height: 13px; font-weight: 600; cursor: pointer; }
+.support-call-controls button > span { display: grid; place-items: center; width: 48px; height: 48px; border: 1px solid var(--sushi-grey-200); border-radius: 50%; color: var(--sushi-peppercorn); background: var(--sushi-tyrolean); }
+.support-call-controls button.end > span { border-color: var(--sushi-red-500); color: var(--sushi-feta); background: var(--sushi-red-500); }
+.support-call-controls button:disabled { opacity: .45; cursor: not-allowed; }
+
+.support-call-safety { display: flex; align-items: center; justify-content: center; gap: var(--space-075); margin-top: var(--space-200); padding-top: var(--space-150); border-top: 1px solid var(--sushi-grey-100); color: var(--sushi-grey-500); font-size: 9px; line-height: 14px; }
+.support-call-safety svg { flex: 0 0 auto; color: var(--sushi-green-500); }
+
 .translation-fab {
   position: fixed;
   z-index: 8;
@@ -463,12 +546,16 @@ button:focus-visible { outline: 3px solid rgba(226, 55, 68, .24); outline-offset
 @keyframes translation-pulse { 50% { opacity: .45; transform: scale(.82); } }
 @keyframes translation-talk-ring { 0% { opacity: .5; transform: scale(.94); } 100% { opacity: 0; transform: scale(1.22); } }
 @keyframes translation-listening { from { transform: scale(.88); opacity: .74; } to { transform: scale(1.06); opacity: 1; } }
+@keyframes support-call-ring { 0% { opacity: .3; transform: scale(.94); } 100% { opacity: 0; transform: scale(1.25); } }
+@keyframes support-call-breathe { from { transform: scale(.88); opacity: .78; } to { transform: scale(1.08); opacity: 1; } }
 
 @media (min-width: 600px) {
   .preview-canvas { padding: var(--space-300) 0; }
   .partner-app { min-height: calc(100dvh - 48px); border-radius: var(--radius-150); box-shadow: 0 4px 16px rgba(45,45,45,.10); }
   .translation-overlay { align-items: center; padding: var(--space-300); }
   .translation-sheet { max-height: calc(100dvh - 48px); border-radius: 20px; }
+  .support-call-overlay { align-items: center; padding: var(--space-300); }
+  .support-call-sheet { max-height: calc(100dvh - 48px); border-radius: 24px; }
 }
 
 @media (max-width: 370px) {

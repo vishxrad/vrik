@@ -29,6 +29,7 @@ import {
 } from "lucide-react";
 
 import { LocalTranslation } from "@/components/local-translation";
+import { SupportAgentCall } from "@/components/support-agent-call";
 
 type Tab = "home" | "earnings" | "history" | "support";
 
@@ -71,6 +72,7 @@ export default function DeliveryPartnerApp() {
   const [online, setOnline] = useState(true);
   const [orderStage, setOrderStage] = useState(0);
   const [toast, setToast] = useState("");
+  const [supportCallOpen, setSupportCallOpen] = useState(false);
 
   const notify = (message: string) => {
     setToast(message);
@@ -126,11 +128,17 @@ export default function DeliveryPartnerApp() {
               orderStage={orderStage}
               onAdvance={advanceOrder}
               onNotify={notify}
+              onOpenSupport={() => setSupportCallOpen(true)}
             />
           )}
           {activeTab === "earnings" && <EarningsScreen />}
           {activeTab === "history" && <HistoryScreen />}
-          {activeTab === "support" && <SupportScreen onNotify={notify} />}
+          {activeTab === "support" && (
+            <SupportScreen
+              onNotify={notify}
+              onOpenSupport={() => setSupportCallOpen(true)}
+            />
+          )}
         </div>
 
         <nav className="bottom-nav" aria-label="Main navigation">
@@ -152,6 +160,10 @@ export default function DeliveryPartnerApp() {
         </nav>
 
         {orderStage < 3 && <LocalTranslation />}
+        <SupportAgentCall
+          open={supportCallOpen}
+          onClose={() => setSupportCallOpen(false)}
+        />
 
         {toast && (
           <div className="sushi-toast" role="status">
@@ -191,11 +203,13 @@ function HomeScreen({
   orderStage,
   onAdvance,
   onNotify,
+  onOpenSupport,
 }: {
   online: boolean;
   orderStage: number;
   onAdvance: () => void;
   onNotify: (message: string) => void;
+  onOpenSupport: () => void;
 }) {
   const stage = orderStages[orderStage];
   const delivered = orderStage === 3;
@@ -252,7 +266,7 @@ function HomeScreen({
         <div className="order-tools" aria-label="Order actions">
           <button onClick={() => onNotify("Calling restaurant")}><Phone size={19} /><span>Call</span></button>
           <button onClick={() => onNotify("Opening directions")}><Navigation size={19} /><span>Directions</span></button>
-          <button onClick={() => onNotify("Order help opened")}><Headphones size={19} /><span>Help</span></button>
+          <button onClick={onOpenSupport}><Headphones size={19} /><span>AI support</span></button>
         </div>
 
         <button className={`sushi-button sushi-button--primary ${delivered ? "sushi-button--success" : ""}`} onClick={onAdvance}>
@@ -332,7 +346,13 @@ function HistoryScreen() {
   );
 }
 
-function SupportScreen({ onNotify }: { onNotify: (message: string) => void }) {
+function SupportScreen({
+  onNotify,
+  onOpenSupport,
+}: {
+  onNotify: (message: string) => void;
+  onOpenSupport: () => void;
+}) {
   const items = [
     { icon: ReceiptText, title: "Current order", copy: "Pickup, customer or delivery issue" },
     { icon: IndianRupee, title: "Payments and earnings", copy: "Payouts, incentives and tips" },
@@ -342,9 +362,9 @@ function SupportScreen({ onNotify }: { onNotify: (message: string) => void }) {
   return (
     <div className="screen-stack">
       <div className="section-title"><div><h1>Partner support</h1><p>Help is available 24×7</p></div></div>
-      <button className="sushi-banner sushi-banner--support" onClick={() => onNotify("Connecting to priority support")}>
+      <button className="sushi-banner sushi-banner--support" onClick={onOpenSupport}>
         <span className="banner-icon"><MessageCircle size={21} /></span>
-        <span><strong>Need help with order #4821?</strong><small>Get priority support for this delivery</small></span>
+        <span><strong>Talk to AI support in Hindi</strong><small>Order #4821 is shared automatically</small></span>
         <ChevronRight size={19} />
       </button>
       <section className="home-links sushi-card">
